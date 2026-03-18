@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="icon" type="image/png" href="favicon.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EvidenceLocker — Open Your Case File</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #07070A;
+  --bg2:      #0D0D12;
+  --cream:    #F0EBE0;
+  --red:      #C41E1E;
+  --text:     #E8E4DC;
+  --muted:    #968E86;
+  --border:   #1A1A22;
+  --border2:  #242430;
+  --dim:      #3A3A48;
+  --green:    #2D7A3A;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  background: var(--bg);
+  font-family: 'Inter', sans-serif;
+  color: var(--text);
+  cursor: none;
+  overflow-x: hidden;
+}
+
+body {
+  opacity: 0;
+  transition: opacity 0.7s ease;
+  min-height: 100vh;
+  /* FIX: removed overflow:hidden so mobile can scroll */
+}
+body.loaded { opacity: 1; }
+::selection { background: var(--red); color: #fff; }
+
+/* CURSOR */
+#cursor {
+  position: fixed;
+  width: 8px; height: 8px;
+  background: var(--red);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 99999;
+  transform: translate(-50%, -50%);
+  transition: width 0.22s ease, height 0.22s ease, background 0.22s ease, border 0.22s ease;
+}
+#cursor.big {
+  width: 34px; height: 34px;
+  background: transparent;
+  border: 1.5px solid var(--red);
+}
+
+/* FIXED CHROME */
+#logo-fixed {
+  position: fixed; bottom: 26px; left: 28px; z-index: 500;
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--dim); letter-spacing: 0.06em;
+  pointer-events: none;
+}
+#case-num {
+  position: fixed; top: 26px; right: 28px; z-index: 500;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--dim); letter-spacing: 0.14em;
+  pointer-events: none;
+}
+
+/* PROGRESS BAR */
+#progress-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 400;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  padding: 20px 0 18px;
+  display: flex; align-items: center; justify-content: center;
+}
+.prog-track {
+  display: flex; align-items: center; gap: 0;
+  position: relative;
+}
+.prog-line {
+  width: 120px; height: 1px;
+  background: var(--border2);
+  position: relative; overflow: hidden;
+}
+.prog-line-fill {
+  position: absolute; top: 0; left: 0;
+  height: 100%; width: 0%;
+  background: var(--red);
+  transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+}
+.prog-node {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  position: relative; z-index: 1;
+}
+.prog-dot {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 1.5px solid var(--dim);
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.3s ease, background 0.3s ease;
+  flex-shrink: 0;
+}
+.prog-dot.active { border-color: var(--red); background: var(--red); }
+.prog-dot.done { border-color: var(--green); background: var(--green); }
+.prog-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--dim);
+  letter-spacing: 0.18em; text-transform: uppercase;
+  white-space: nowrap;
+}
+.prog-node.active .prog-label { color: var(--text); }
+.prog-node.done .prog-label { color: var(--green); }
+
+/* STEP WRAPPER */
+#steps-wrapper {
+  position: relative;
+  width: 100%;
+  /* FIX: use min-height instead of fixed height so content isn't clipped */
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.step {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  width: 100%;
+  /* FIX: min-height instead of height so long content scrolls within page */
+  min-height: 100vh;
+  padding: 80px 80px 120px;
+  display: flex; align-items: flex-start;
+  padding-top: 80px;
+  opacity: 0;
+  transform: translateX(100%);
+  transition: transform 0.38s cubic-bezier(0.4,0,0.2,1),
+              opacity 0.38s cubic-bezier(0.4,0,0.2,1);
+  pointer-events: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+/* FIX: active step is position relative so it takes up real space in doc flow */
+.step.active {
+  position: relative;
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: all;
+}
+.step.exit-left {
+  opacity: 0;
+  transform: translateX(-100%);
+}
+
+.step-inner { width: 100%; max-width: 1100px; margin: 0 auto; }
+
+/* SHARED TYPOGRAPHY */
+.step-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--dim);
+  letter-spacing: 0.2em; text-transform: uppercase;
+  margin-bottom: 24px;
+}
+.step-heading {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(32px, 4vw, 52px);
+  font-weight: 400; color: var(--text);
+  line-height: 1.1; margin-bottom: 14px;
+}
+.step-sub {
+  font-size: 15px; font-weight: 300;
+  color: var(--muted); line-height: 1.7;
+  margin-bottom: 40px;
+}
+
+/* CATEGORY GRID */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 40px;
+}
+@media (max-width: 760px) {
+  .cat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.cat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 28px;
+  cursor: none;
+  position: relative;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.15s ease;
+  user-select: none;
+}
+.cat-card:hover { border-color: var(--red); transform: translateY(-2px); }
+.cat-card:hover .cat-icon { stroke: var(--red); }
+.cat-card.selected { border-color: var(--red); background: rgba(196,30,30,0.06); }
+.cat-card.selected .cat-icon { stroke: var(--red); }
+
+.cat-check {
+  position: absolute; top: 14px; right: 14px;
+  width: 16px; height: 16px;
+  opacity: 0; transition: opacity 0.18s ease;
+}
+.cat-card.selected .cat-check { opacity: 1; }
+
+.cat-icon {
+  stroke: var(--dim); fill: none;
+  margin-bottom: 14px; display: block;
+  transition: stroke 0.18s ease;
+}
+.cat-name {
+  font-family: 'DM Serif Display', serif;
+  font-size: 20px; font-weight: 400;
+  color: var(--text); margin-bottom: 6px; line-height: 1.2;
+}
+.cat-desc { font-size: 13px; font-weight: 300; color: var(--muted); line-height: 1.5; }
+
+/* BUTTONS */
+.btn-red {
+  background: var(--red); color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px; font-weight: 600;
+  padding: 14px 36px; border-radius: 2px;
+  border: none; cursor: none;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  transition: opacity 0.2s ease;
+  display: inline-flex; align-items: center; gap: 10px;
+}
+.btn-red:hover { opacity: 0.86; }
+.btn-red:disabled { opacity: 0.35; pointer-events: none; }
+
+.btn-ghost {
+  background: transparent; color: var(--muted);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px; font-weight: 400;
+  padding: 14px 28px; border-radius: 2px;
+  border: 1px solid var(--border2); cursor: none;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  transition: border-color 0.2s ease, color 0.2s ease;
+  display: inline-flex; align-items: center; gap: 10px;
+}
+.btn-ghost:hover { border-color: var(--muted); color: var(--text); }
+
+.btn-row { display: flex; align-items: center; gap: 16px; margin-top: 40px; }
+
+/* FIX: validation hint shown when description too short */
+.validation-hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--red);
+  letter-spacing: 0.08em; margin-top: 8px;
+  opacity: 0; transition: opacity 0.2s ease;
+  height: 14px;
+}
+.validation-hint.show { opacity: 1; }
+
+/* STEP 2 TWO-COL */
+.s2-grid {
+  display: grid;
+  grid-template-columns: 55% 45%;
+  gap: 64px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .s2-grid { grid-template-columns: 1fr; gap: 40px; }
+  .step { padding: 60px 24px 120px; }
+}
+
+/* INPUTS */
+.field-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.field-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--dim);
+  letter-spacing: 0.14em; text-transform: uppercase;
+}
+
+.field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.field-action {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 7px 10px;
+  border-radius: 2px;
+  cursor: none;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+  white-space: nowrap;
+}
+.field-action:hover {
+  border-color: var(--red);
+  color: var(--text);
+  background: rgba(196,30,30,0.06);
+}
+
+textarea, input[type="text"], input[type="date"], input[type="number"] {
+  width: 100%;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; line-height: 1.7;
+  padding: 14px 16px;
+  border-radius: 2px;
+  outline: none;
+  transition: border-color 0.2s ease;
+  cursor: text;
+  -webkit-appearance: none;
+  appearance: none;
+}
+textarea:focus, input:focus { border-color: var(--red); }
+textarea::placeholder, input::placeholder { color: var(--dim); }
+textarea { resize: none; }
+input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.3); cursor: none; }
+
+.char-counter {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--dim);
+  text-align: right; margin-top: 4px;
+}
+
+/* PREVIEW CARD */
+.preview-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--red);
+  border-radius: 2px;
+  overflow: hidden;
+  position: sticky; top: 40px;
+}
+.prev-head {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.prev-head span {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--dim);
+  letter-spacing: 0.14em; text-transform: uppercase;
+}
+.prev-body { padding: 22px 20px 26px; }
+.prev-row {
+  margin-bottom: 16px; padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.prev-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.prev-key {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--dim);
+  letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 5px;
+}
+.prev-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; color: var(--text);
+  line-height: 1.65; min-height: 18px;
+}
+.prev-val .blink {
+  display: inline-block; width: 6px; height: 11px;
+  background: var(--red); margin-left: 2px; vertical-align: middle;
+  animation: blink 0.9s step-end infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+.cat-tag {
+  display: inline-block;
+  background: rgba(196,30,30,0.12);
+  border: 1px solid rgba(196,30,30,0.3);
+  color: var(--red);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 1px;
+}
+
+/* EVIDENCE GRID */
+.evid-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 36px;
+}
+@media (max-width: 900px) { .evid-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) {
+  .cat-grid { grid-template-columns: repeat(2, 1fr); }
+  .evid-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.evid-tile {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 2px; padding: 22px;
+  cursor: none; user-select: none; position: relative;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.15s ease;
+}
+.evid-tile:hover { border-color: var(--red); transform: translateY(-2px); }
+.evid-tile:hover .evid-icon { stroke: var(--red); }
+.evid-tile.selected { border-color: var(--red); background: rgba(196,30,30,0.06); }
+.evid-tile.selected .evid-icon { stroke: var(--red); }
+
+.evid-check {
+  position: absolute; top: 12px; right: 12px;
+  width: 14px; height: 14px;
+  opacity: 0; transition: opacity 0.18s ease;
+}
+.evid-tile.selected .evid-check { opacity: 1; }
+
+.evid-icon {
+  stroke: var(--dim); fill: none;
+  margin-bottom: 12px; display: block;
+  transition: stroke 0.18s ease;
+}
+.evid-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
+.evid-desc { font-size: 12px; font-weight: 300; color: var(--muted); line-height: 1.5; }
+
+/* RESPONSIVE */
+@media (max-width: 760px) {
+  .step { padding: 50px 24px 120px; }
+  #logo-fixed, #case-num { display: none; }
+  .prog-line { width: 72px; }
+}
+
+/* SUBMIT FLASH */
+@keyframes flashRed {
+  0%,100% { background: var(--red); }
+  50% { background: #8b1010; }
+}
+.btn-red.submitting { animation: flashRed 0.6s ease 2; }
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+
+<div id="logo-fixed">
+  <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+    <rect x="2" y="6" width="10" height="7" rx="1.2" stroke="#3A3A48" stroke-width="1.2"/>
+    <path d="M4.5 6V4.5a2.5 2.5 0 015 0V6" stroke="#3A3A48" stroke-width="1.2" stroke-linecap="round"/>
+    <circle cx="7" cy="9.5" r="1" fill="#3A3A48"/>
+  </svg>
+  EvidenceLocker
+</div>
+<div id="case-num">CASE NO. EL-2024-001</div>
+
+<div id="progress-bar">
+  <div class="prog-track">
+    <div class="prog-node active" id="pnode-1">
+      <div class="prog-dot active" id="pdot-1">
+        <svg id="pcheck-1" width="9" height="9" viewBox="0 0 9 9" fill="none" style="opacity:0;transition:opacity 0.2s">
+          <path d="M1.5 4.5l2 2 4-4" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="prog-label">Category</span>
+    </div>
+    <div class="prog-line"><div class="prog-line-fill" id="pline-1"></div></div>
+    <div class="prog-node" id="pnode-2">
+      <div class="prog-dot" id="pdot-2">
+        <svg id="pcheck-2" width="9" height="9" viewBox="0 0 9 9" fill="none" style="opacity:0;transition:opacity 0.2s">
+          <path d="M1.5 4.5l2 2 4-4" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="prog-label">Details</span>
+    </div>
+    <div class="prog-line"><div class="prog-line-fill" id="pline-2"></div></div>
+    <div class="prog-node" id="pnode-3">
+      <div class="prog-dot" id="pdot-3">
+        <svg id="pcheck-3" width="9" height="9" viewBox="0 0 9 9" fill="none" style="opacity:0;transition:opacity 0.2s">
+          <path d="M1.5 4.5l2 2 4-4" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="prog-label">Evidence</span>
+    </div>
+  </div>
+</div>
+
+<div id="steps-wrapper">
+
+  <!-- STEP 1 -->
+  <div class="step active" id="step-1">
+    <div class="step-inner">
+      <div class="step-eyebrow">Count I · Intake — Select Case Type</div>
+      <h1 class="step-heading">What was done to you?</h1>
+      <p class="step-sub">Select the category that best describes your situation.</p>
+
+      <div class="cat-grid">
+        <div class="cat-card" data-cat="Landlord / Housing">
+          <svg class="cat-check" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7.25" fill="#C41E1E"/><path d="M4.5 8l2.5 2.5 4.5-4.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="cat-icon" width="22" height="22" viewBox="0 0 24 24" stroke-width="1.4"><path d="M3 10.5L12 3l9 7.5V21a1 1 0 01-1 1H4a1 1 0 01-1-1V10.5z"/><rect x="9" y="13" width="6" height="8" rx="0.5"/></svg>
+          <div class="cat-name">Landlord / Housing</div>
+          <div class="cat-desc">Security deposits, habitability, illegal eviction</div>
+        </div>
+        <div class="cat-card" data-cat="Employer / Workplace">
+          <svg class="cat-check" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7.25" fill="#C41E1E"/><path d="M4.5 8l2.5 2.5 4.5-4.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="cat-icon" width="22" height="22" viewBox="0 0 24 24" stroke-width="1.4"><rect x="2" y="7" width="20" height="14" rx="1.5"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+          <div class="cat-name">Employer / Workplace</div>
+          <div class="cat-desc">Wage theft, discrimination, wrongful termination</div>
+        </div>
+        <div class="cat-card" data-cat="Contractor / Builder">
+          <svg class="cat-check" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7.25" fill="#C41E1E"/><path d="M4.5 8l2.5 2.5 4.5-4.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="cat-icon" width="22" height="22" viewBox="0 0 24 24" stroke-width="1.4"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3-3a5 5 0 01-7 7L5.4 20a2.12 2.12 0 01-3-3L10 9.3a5 5 0 017-7l-3 3z"/></svg>
+          <div class="cat-name">Contractor / Builder</div>
+          <div class="cat-desc">Abandoned projects, defective work, fraud</div>
+        </div>
+        <div class="cat-card" data-cat="Online Scam / Fraud">
+          <svg class="cat-check" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7.25" fill="#C41E1E"/><path d="M4.5 8l2.5 2.5 4.5-4.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="cat-icon" width="22" height="22" viewBox="0 0 24 24" stroke-width="1.4"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <div class="cat-name">Online Scam / Fraud</div>
+          <div class="cat-desc">Financial fraud, fake services, identity theft</div>
+        </div>
+        <div class="cat-card" data-cat="Retailer / Seller">
+          <svg class="cat-check" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7.25" fill="#C41E1E"/><path d="M4.5 8l2.5 2.5 4.5-4.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="cat-icon" width="22" height="22" viewBox="0 0 24 24" stroke-width="1.4"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+          <div class="cat-name">Retailer / Seller</div>
+          <div class="cat-desc">Defective products, refund denials, false advertising</div>
+        </div>
+        <div class="cat-card" data-cat="Other">
+          <svg class="cat-check" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7.25" fill="#C41E1E"/><path d="M4.5 8l2.5 2.5 4.5-4.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="cat-icon" width="22" height="22" viewBox="0 0 24 24" stroke-width="1.4"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          <div class="cat-name">Other</div>
+          <div class="cat-desc">Any situation where you've been wronged</div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <!-- FIX: disabled by default until category selected -->
+        <button class="btn-red" id="btn-s1-next" disabled>
+          Continue to Details
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M7.5 3l4 4-4 4" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step" id="step-2" style="transform:translateX(100%);opacity:0;position:absolute;">
+    <div class="step-inner">
+      <div class="step-eyebrow">Count II · Details — Describe Your Situation</div>
+
+      <div class="s2-grid">
+        <div>
+          <h2 class="step-heading">Tell us exactly what happened.</h2>
+          <p class="step-sub">Plain language only. No legal knowledge required. The more detail the better.</p>
+
+          <div class="field-group">
+            <div class="field-label-row">
+              <div class="field-label">Your statement</div>
+              <button type="button" class="field-action" id="btn-s2-example">Use Example</button>
+            </div>
+            <textarea id="s2-desc" rows="8"
+              placeholder="My landlord refused to return my $2,400 security deposit. I moved out on March 3rd and left the apartment in perfect condition. He's been ignoring my texts for 6 weeks..."
+              maxlength="800"
+            ></textarea>
+            <div class="char-counter"><span id="char-count">0</span> / 800</div>
+            <!-- FIX: validation hint -->
+            <div class="validation-hint" id="desc-hint">Describe your situation in at least a few words to continue.</div>
+          </div>
+
+          <div class="field-group">
+            <div class="field-label">Approximate date this started</div>
+            <input type="date" id="s2-date">
+          </div>
+          <div class="field-group">
+            <div class="field-label">Your state or territory</div>
+            <input type="text" id="s2-state" placeholder="e.g. California" maxlength="40">
+          </div>
+          <div class="field-group">
+            <div class="field-label">Estimated financial damage ($)</div>
+            <input type="number" id="s2-amount" placeholder="e.g. 2400" min="0">
+          </div>
+
+          <div class="btn-row">
+            <button class="btn-ghost" id="btn-s2-back">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M12 7H2M6.5 3L2.5 7l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Back
+            </button>
+            <!-- FIX: disabled by default until description has enough text -->
+            <button class="btn-red" id="btn-s2-next" disabled>
+              Continue to Evidence
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M7.5 3l4 4-4 4" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <div class="preview-card">
+            <div class="prev-head">
+              <span>Case Preview · Live</span>
+              <span id="prev-id">EL-—</span>
+            </div>
+            <div class="prev-body">
+              <div class="prev-row">
+                <div class="prev-key">Category</div>
+                <div class="prev-val" id="prev-cat">—</div>
+              </div>
+              <div class="prev-row">
+                <div class="prev-key">Statement</div>
+                <div class="prev-val" id="prev-desc"><span class="blink"></span></div>
+              </div>
+              <div class="prev-row">
+                <div class="prev-key">Jurisdiction</div>
+                <div class="prev-val" id="prev-state">—</div>
+              </div>
+              <div class="prev-row">
+                <div class="prev-key">Damages</div>
+                <div class="prev-val" id="prev-amount">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step" id="step-3" style="transform:translateX(100%);opacity:0;position:absolute;">
+    <div class="step-inner">
+      <div class="step-eyebrow">Count III · Evidence — What Do You Already Have</div>
+      <h2 class="step-heading">What evidence do you have?</h2>
+      <p class="step-sub">Check everything that applies. This helps us prioritize your checklist.</p>
+
+      <div class="evid-grid">
+        <div class="evid-tile" data-evid="Text Messages">
+          <svg class="evid-check" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6.25" fill="#C41E1E"/><path d="M3.5 7l2.5 2.5 4.5-4.5" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="evid-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="1.4"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          <div class="evid-title">Text Messages</div>
+          <div class="evid-desc">SMS or iMessage threads</div>
+        </div>
+        <div class="evid-tile" data-evid="Emails">
+          <svg class="evid-check" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6.25" fill="#C41E1E"/><path d="M3.5 7l2.5 2.5 4.5-4.5" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="evid-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="1.4"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 4l10 9 10-9"/></svg>
+          <div class="evid-title">Emails</div>
+          <div class="evid-desc">Written email correspondence</div>
+        </div>
+        <div class="evid-tile" data-evid="Photos / Video">
+          <svg class="evid-check" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6.25" fill="#C41E1E"/><path d="M3.5 7l2.5 2.5 4.5-4.5" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="evid-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          <div class="evid-title">Photos / Video</div>
+          <div class="evid-desc">Visual documentation</div>
+        </div>
+        <div class="evid-tile" data-evid="Signed Contract">
+          <svg class="evid-check" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6.25" fill="#C41E1E"/><path d="M3.5 7l2.5 2.5 4.5-4.5" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="evid-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="1.4"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>
+          <div class="evid-title">Signed Contract</div>
+          <div class="evid-desc">Written agreements</div>
+        </div>
+        <div class="evid-tile" data-evid="Receipts / Invoices">
+          <svg class="evid-check" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6.25" fill="#C41E1E"/><path d="M3.5 7l2.5 2.5 4.5-4.5" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="evid-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="1.4"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 5h14l-2-5"/></svg>
+          <div class="evid-title">Receipts / Invoices</div>
+          <div class="evid-desc">Payment records</div>
+        </div>
+        <div class="evid-tile" data-evid="Witness">
+          <svg class="evid-check" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6.25" fill="#C41E1E"/><path d="M3.5 7l2.5 2.5 4.5-4.5" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="evid-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="1.4"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          <div class="evid-title">Witness</div>
+          <div class="evid-desc">Someone who saw what happened</div>
+        </div>
+        <div class="evid-tile" data-evid="Bank Records">
+          <svg class="evid-check" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6.25" fill="#C41E1E"/><path d="M3.5 7l2.5 2.5 4.5-4.5" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="evid-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="1.4"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          <div class="evid-title">Bank Records</div>
+          <div class="evid-desc">Transaction history</div>
+        </div>
+        <div class="evid-tile" data-evid="Other Documents">
+          <svg class="evid-check" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6.25" fill="#C41E1E"/><path d="M3.5 7l2.5 2.5 4.5-4.5" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="evid-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="1.4"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M13 2v7h7"/></svg>
+          <div class="evid-title">Other Documents</div>
+          <div class="evid-desc">Anything else relevant</div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Anything else we should know? (optional)</div>
+        <textarea id="s3-notes" rows="4"
+          placeholder="Additional context, timeline details, or anything that doesn't fit above..."
+          maxlength="600" style="height:100px;"></textarea>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-ghost" id="btn-s3-back">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M12 7H2M6.5 3L2.5 7l4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Back
+        </button>
+        <button class="btn-red" id="btn-s3-submit">
+          Build My Case File
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M7.5 3l4 4-4 4" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+window.addEventListener('load', () => document.body.classList.add('loaded'));
+
+// CURSOR
+const cur = document.getElementById('cursor');
+let mx = innerWidth/2, my = innerHeight/2, cx = mx, cy = my;
+document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+document.querySelectorAll('button, .cat-card, .evid-tile, a').forEach(el => {
+  el.addEventListener('mouseenter', () => cur.classList.add('big'));
+  el.addEventListener('mouseleave', () => cur.classList.remove('big'));
+});
+(function anim() {
+  cx += (mx - cx) * 0.14; cy += (my - cy) * 0.14;
+  cur.style.left = cx + 'px'; cur.style.top = cy + 'px';
+  requestAnimationFrame(anim);
+})();
+
+// STATE
+const state = {
+  step: 1, category: null,
+  description: '', date: '', stateVal: '', amount: '',
+  evidence: [], notes: '',
+  caseId: 'EL-' + Math.floor(Math.random()*9000 + 1000)
+};
+document.getElementById('prev-id').textContent = state.caseId;
+
+// STEP TRANSITIONS
+function goTo(next) {
+  const curr = state.step;
+  if (next === curr) return;
+  const dir = next > curr ? 1 : -1;
+
+  const fromEl = document.getElementById('step-' + curr);
+  const toEl   = document.getElementById('step-' + next);
+
+  // Freeze current
+  fromEl.style.transition = 'transform 0.38s cubic-bezier(0.4,0,0.2,1), opacity 0.38s cubic-bezier(0.4,0,0.2,1)';
+  fromEl.style.position = 'absolute';
+  fromEl.style.top = '0';
+  fromEl.style.transform = dir > 0 ? 'translateX(-100%)' : 'translateX(100%)';
+  fromEl.style.opacity = '0';
+  fromEl.style.pointerEvents = 'none';
+
+  // Prep incoming
+  toEl.style.transition = 'none';
+  toEl.style.position = 'absolute';
+  toEl.style.top = '0';
+  toEl.style.transform = dir > 0 ? 'translateX(100%)' : 'translateX(-100%)';
+  toEl.style.opacity = '0';
+  toEl.style.pointerEvents = 'none';
+
+  void toEl.offsetWidth; // repaint
+
+  toEl.style.transition = 'transform 0.38s cubic-bezier(0.4,0,0.2,1), opacity 0.38s cubic-bezier(0.4,0,0.2,1)';
+  toEl.style.transform = 'translateX(0)';
+  toEl.style.opacity = '1';
+
+  // After animation make incoming take flow space
+  setTimeout(() => {
+    toEl.style.position = 'relative';
+    toEl.style.pointerEvents = 'all';
+    window.scrollTo(0, 0);
+  }, 400);
+
+  state.step = next;
+  updateProgress(next);
+}
+
+function updateProgress(step) {
+  for (let i = 1; i <= 3; i++) {
+    const dot   = document.getElementById('pdot-' + i);
+    const node  = document.getElementById('pnode-' + i);
+    const check = document.getElementById('pcheck-' + i);
+    dot.classList.remove('active', 'done');
+    node.classList.remove('active', 'done');
+    check.style.opacity = '0';
+    if (i < step) {
+      dot.classList.add('done'); node.classList.add('done'); check.style.opacity = '1';
+    } else if (i === step) {
+      dot.classList.add('active'); node.classList.add('active');
+    }
+  }
+  document.getElementById('pline-1').style.width = step >= 2 ? '100%' : '0%';
+  document.getElementById('pline-2').style.width = step >= 3 ? '100%' : '0%';
+}
+
+// STEP 1
+const catCards  = document.querySelectorAll('.cat-card');
+const btnS1Next = document.getElementById('btn-s1-next');
+
+catCards.forEach(card => {
+  card.addEventListener('click', () => {
+    catCards.forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    state.category = card.dataset.cat;
+    btnS1Next.disabled = false;
+    document.getElementById('prev-cat').innerHTML = `<span class="cat-tag">${state.category}</span>`;
+  });
+});
+btnS1Next.addEventListener('click', () => { if (state.category) goTo(2); });
+
+// STEP 2 — FIX: validate description before allowing continue
+const descEl    = document.getElementById('s2-desc');
+const btnS2Next = document.getElementById('btn-s2-next');
+const descHint  = document.getElementById('desc-hint');
+const btnS2Example = document.getElementById('btn-s2-example');
+const dateEl = document.getElementById('s2-date');
+const stateEl = document.getElementById('s2-state');
+const amountEl = document.getElementById('s2-amount');
+const exampleIndexes = {};
+const statementExamples = {
+  'Landlord / Housing': [
+    {
+      description: "I rented an apartment from my landlord for one year and moved out on February 28, 2026 after giving proper notice. I left the unit clean, returned the keys, and asked for my security deposit to be returned. My landlord has kept my $2,400 deposit without providing an itemized deduction list or any proof of damage, and has ignored my texts and emails for several weeks.",
+      date: "2026-02-28",
+      stateVal: "California",
+      amount: "2400"
+    },
+    {
+      description: "My landlord promised to repair serious issues in my rental unit, including water damage and a broken heater, but failed to do so after repeated written requests. I continued paying rent while living with unsafe conditions that affected my daily life. I have photos, messages, and maintenance requests showing the problems and the landlord's refusal to correct them.",
+      date: "2026-01-12",
+      stateVal: "New York",
+      amount: "1800"
+    }
+  ],
+  'Employer / Workplace': [
+    {
+      description: "I worked for my employer from June 2025 through January 2026 and regularly worked overtime, including weekends. Even though my time records show the extra hours, I was not paid the overtime wages I earned. When I asked payroll and my supervisor to correct it, they delayed, avoided giving a clear answer, and still have not paid the amount owed to me.",
+      date: "2026-01-08",
+      stateVal: "Texas",
+      amount: "3200"
+    },
+    {
+      description: "I was terminated shortly after I reported concerns about unfair treatment and policy violations in my workplace. Before I was fired, my performance had not been an issue and I had not received formal discipline. The timing and surrounding communications make me believe the termination was retaliatory and not based on a legitimate business reason.",
+      date: "2026-02-03",
+      stateVal: "Illinois",
+      amount: "8500"
+    }
+  ],
+  'Contractor / Builder': [
+    {
+      description: "I hired a contractor to complete repair work at my home and paid a deposit based on a written agreement. The contractor started the job, left it unfinished, and then stopped responding to my calls and messages. I paid for work that was not completed and now need additional money to fix the unfinished or defective construction.",
+      date: "2025-11-18",
+      stateVal: "Florida",
+      amount: "6700"
+    },
+    {
+      description: "A contractor represented that they were licensed and capable of completing a remodeling project by an agreed deadline. The work was poorly done, several parts were not up to code, and the contractor refused to correct the defects after I complained. I have the contract, invoices, photographs, and messages documenting the problems.",
+      date: "2026-01-26",
+      stateVal: "Georgia",
+      amount: "12000"
+    }
+  ],
+  'Online Scam / Fraud': [
+    {
+      description: "I paid for a service that was advertised online as legitimate and professionally managed. After payment was sent, the seller stopped communicating, failed to deliver what was promised, and refused to issue a refund. I have screenshots of the listing, payment records, and messages showing the promises that were made before I paid.",
+      date: "2026-02-10",
+      stateVal: "Arizona",
+      amount: "1450"
+    },
+    {
+      description: "I responded to an online offer that claimed I would receive a product or financial benefit after making payment. After I sent the money, the person demanded additional payments, changed the terms, and never delivered the original promise. The communications and transaction records show a pattern of misrepresentation and pressure.",
+      date: "2026-03-01",
+      stateVal: "Nevada",
+      amount: "2900"
+    }
+  ],
+  'Retailer / Seller': [
+    {
+      description: "I purchased an item from a seller who represented that it was new, fully functional, and eligible for return if there was a problem. After receiving it, I discovered the product was defective and did not match the description. I requested a refund within a reasonable time, but the seller denied responsibility and has not returned my money.",
+      date: "2026-02-14",
+      stateVal: "Washington",
+      amount: "760"
+    },
+    {
+      description: "A retailer advertised a product with specific features and delivery terms that influenced my purchase decision. The item I received was materially different from what was advertised, and customer service refused to honor the stated refund or exchange policy. I kept the order confirmation, product listing, and message history showing those representations.",
+      date: "2026-01-30",
+      stateVal: "Colorado",
+      amount: "1100"
+    }
+  ],
+  'Other': [
+    {
+      description: "I entered into an agreement based on clear promises that were made to me, and I relied on those promises in good faith. The other party did not follow through, caused me financial loss, and has not fixed the problem despite multiple requests. I am looking for a clear summary of what happened and the strongest way to present my claim.",
+      date: "2026-01-15",
+      stateVal: "Pennsylvania",
+      amount: "5000"
+    },
+    {
+      description: "I made repeated efforts to resolve this issue directly and gave the other party a reasonable opportunity to correct the problem. Instead of addressing the situation, they delayed, avoided communication, or denied responsibility. I have records showing what was promised, what actually happened, and how the matter remains unresolved.",
+      date: "2026-02-22",
+      stateVal: "New Jersey",
+      amount: "2100"
+    }
+  ]
+};
+
+function updateStatementPreview() {
+  state.description = descEl.value;
+  document.getElementById('char-count').textContent = descEl.value.length;
+
+  const preview = descEl.value.slice(0, 80);
+  document.getElementById('prev-desc').innerHTML = preview
+    ? preview + (descEl.value.length > 80 ? '...' : '') + '<span class="blink"></span>'
+    : '<span class="blink"></span>';
+}
+
+function updateFormPreview() {
+  updateStatementPreview();
+  state.stateVal = stateEl.value;
+  state.amount = amountEl.value;
+  state.date = dateEl.value;
+  document.getElementById('prev-state').textContent = stateEl.value || '—';
+  document.getElementById('prev-amount').textContent = amountEl.value
+    ? '$' + Number(amountEl.value).toLocaleString('en-US') : '—';
+}
+
+function validateDesc() {
+  const ok = descEl.value.trim().length >= 20;
+  btnS2Next.disabled = !ok;
+  // Show hint only after user has typed something but not enough
+  if (descEl.value.trim().length > 0 && !ok) {
+    descHint.classList.add('show');
+  } else {
+    descHint.classList.remove('show');
+  }
+}
+
+descEl.addEventListener('input', () => {
+  updateFormPreview();
+  validateDesc();
+});
+
+btnS2Example.addEventListener('click', () => {
+  const category = state.category || 'Other';
+  const exampleList = statementExamples[category] || statementExamples['Other'];
+  const index = exampleIndexes[category] || 0;
+  const example = exampleList[index];
+  descEl.value = example.description;
+  dateEl.value = example.date;
+  stateEl.value = example.stateVal;
+  amountEl.value = example.amount;
+  exampleIndexes[category] = (index + 1) % exampleList.length;
+  updateFormPreview();
+  validateDesc();
+  descEl.focus();
+  descEl.setSelectionRange(descEl.value.length, descEl.value.length);
+});
+
+stateEl.addEventListener('input', function() {
+  state.stateVal = this.value;
+  document.getElementById('prev-state').textContent = this.value || '—';
+});
+amountEl.addEventListener('input', function() {
+  state.amount = this.value;
+  document.getElementById('prev-amount').textContent = this.value
+    ? '$' + Number(this.value).toLocaleString('en-US') : '—';
+});
+dateEl.addEventListener('input', function() { state.date = this.value; });
+
+document.getElementById('btn-s2-back').addEventListener('click', () => goTo(1));
+btnS2Next.addEventListener('click', () => {
+  if (descEl.value.trim().length < 20) {
+    descHint.classList.add('show');
+    descEl.focus();
+    return;
+  }
+  goTo(3);
+});
+
+// STEP 3
+document.querySelectorAll('.evid-tile').forEach(tile => {
+  tile.addEventListener('click', () => {
+    tile.classList.toggle('selected');
+    const key = tile.dataset.evid;
+    if (tile.classList.contains('selected')) {
+      if (!state.evidence.includes(key)) state.evidence.push(key);
+    } else {
+      state.evidence = state.evidence.filter(e => e !== key);
+    }
+  });
+});
+
+document.getElementById('btn-s3-back').addEventListener('click', () => goTo(2));
+
+document.getElementById('btn-s3-submit').addEventListener('click', () => {
+  state.notes = document.getElementById('s3-notes').value;
+  const payload = {
+    caseId: state.caseId, category: state.category,
+    description: state.description, date: state.date,
+    state: state.stateVal, amount: state.amount,
+    evidence: state.evidence, notes: state.notes,
+    timestamp: new Date().toISOString()
+  };
+  try { localStorage.setItem('el_case', JSON.stringify(payload)); } catch(e) {}
+
+  const btn = document.getElementById('btn-s3-submit');
+  btn.classList.add('submitting');
+  btn.innerHTML = 'Building case file...';
+  btn.disabled = true;
+
+  setTimeout(() => { window.location.href = 'loading.html'; }, 1400);
+});
+</script>
+</body>
+</html>

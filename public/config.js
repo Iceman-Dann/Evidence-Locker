@@ -1,0 +1,3 @@
+window.__EVIDENCELOCKER_CONFIG__ = Object.assign({}, window.__EVIDENCELOCKER_CONFIG__, {
+  GEMINI_API_KEY: "YOUR_GEMINI_API_KEY"
+});

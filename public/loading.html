@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="icon" type="image/png" href="favicon.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EvidenceLocker — Analyzing Case</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<style>
+/* ── TOKENS ── */
+:root {
+  --bg:      #07070A;
+  --bg2:     #0D0D12;
+  --red:     #C41E1E;
+  --text:    #E8E4DC;
+  --muted:   #968E86;
+  --border:  #1A1A22;
+  --border2: #242430;
+  --dim:     #3A3A48;
+  --green:   #2D7A3A;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  background: var(--bg);
+  font-family: 'Inter', sans-serif;
+  color: var(--text);
+  cursor: none;
+  height: 100%;
+}
+
+body {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  min-height: 100vh;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+
+  /* Horizontal ruled lines */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent, transparent 55px,
+    rgba(255,255,255,0.015) 55px,
+    rgba(255,255,255,0.015) 56px
+  );
+}
+body.loaded { opacity: 1; }
+body.fade-out { opacity: 0 !important; transition: opacity 0.5s ease !important; }
+
+/* Vignette */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background: radial-gradient(ellipse at center, transparent 50%, #07070A 90%);
+  pointer-events: none; z-index: 0;
+}
+
+::selection { background: var(--red); color: #fff; }
+
+/* ── CURSOR ── */
+#cursor {
+  position: fixed;
+  width: 8px; height: 8px;
+  background: var(--red);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 99999;
+  transform: translate(-50%, -50%);
+  transition: width 0.22s ease, height 0.22s ease,
+              background 0.22s ease, border 0.22s ease;
+}
+#cursor.big {
+  width: 34px; height: 34px;
+  background: transparent;
+  border: 1.5px solid var(--red);
+}
+
+/* ── FIXED CHROME ── */
+#logo-fixed {
+  position: fixed; bottom: 26px; left: 28px; z-index: 100;
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--dim); letter-spacing: 0.06em;
+  pointer-events: none;
+}
+#case-num {
+  position: fixed; top: 26px; right: 28px; z-index: 100;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--dim); letter-spacing: 0.14em;
+  pointer-events: none;
+}
+
+/* ── MAIN STAGE ── */
+#stage {
+  position: relative; z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 80px 24px;
+}
+
+/* ── ZONE 1: STATUS LINE ── */
+.status-line {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--dim);
+  letter-spacing: 0.2em; text-transform: uppercase;
+  margin-bottom: 56px;
+}
+.status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green);
+  flex-shrink: 0;
+  animation: statusBlink 1.2s step-end infinite;
+}
+@keyframes statusBlink {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
+/* ── ZONE 2: PADLOCK ── */
+.lock-wrap {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 32px;
+  margin-bottom: 40px;
+}
+
+/* SVG padlock — shackle is a separate group we animate */
+#padlock {
+  width: 80px; height: 80px;
+  overflow: visible;
+}
+
+.lock-shackle {
+  transform-origin: 40px 32px; /* pivot at shackle base center */
+  transition: transform 0.6s ease;
+}
+.lock-shackle.open {
+  transform: rotate(-28deg) translateY(-6px);
+}
+
+.lock-case-id {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; color: var(--dim);
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+.lock-category {
+  font-family: 'DM Serif Display', serif;
+  font-size: 28px; font-weight: 400; color: var(--text);
+  margin-top: 8px; text-align: center;
+}
+
+/* ── PIPELINE ── */
+#pipeline {
+  display: flex; align-items: center;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+#pipeline.hidden { opacity: 0; pointer-events: none; }
+
+.pipe-node-wrap {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 10px;
+}
+.pipe-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 1.5px solid var(--dim);
+  background: var(--bg);
+  transition: border-color 0.3s ease, background 0.3s ease;
+  flex-shrink: 0;
+}
+.pipe-dot.lit {
+  border-color: var(--red);
+  background: var(--red);
+}
+.pipe-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--dim);
+  letter-spacing: 0.18em; text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.pipe-label.vis { opacity: 1; }
+
+.pipe-line {
+  width: 80px; height: 2px;
+  background: var(--border2);
+  position: relative; overflow: hidden;
+  flex-shrink: 0;
+  align-self: center;
+  margin-bottom: 19px; /* push line up to align with dots */
+}
+.pipe-line-fill {
+  position: absolute; top: 0; left: 0;
+  height: 100%; width: 0%;
+  background: var(--red);
+  transition: width 0.35s ease;
+}
+
+/* "Case file ready" */
+#ready-msg {
+  font-family: 'DM Serif Display', serif;
+  font-style: italic;
+  font-size: 36px; font-weight: 400; color: var(--text);
+  opacity: 0;
+  transition: opacity 0.24s ease;
+  position: absolute; /* overlaps pipeline position */
+  pointer-events: none;
+  text-align: center;
+}
+#ready-msg.vis { opacity: 1; }
+
+/* Container holding pipeline + ready (same space) */
+.pipeline-zone {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  height: 60px; /* enough for both */
+  width: 100%;
+  max-width: 520px;
+}
+
+.think-wrap {
+  width: 100%;
+  max-width: 340px;
+  margin-bottom: 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.think-visual {
+  width: 100%;
+  height: 64px;
+  border: 1px solid var(--border);
+  border-top: 2px solid rgba(196,30,30,0.45);
+  background:
+    linear-gradient(90deg, rgba(196,30,30,0.06), transparent 40%, rgba(196,30,30,0.04)),
+    var(--bg2);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.think-visual::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 72px;
+  background: linear-gradient(90deg, transparent, rgba(196,30,30,0.18), transparent);
+  animation: thinkSweep 2.4s ease-in-out infinite;
+}
+
+.think-bar {
+  width: 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(196,30,30,0.95), rgba(196,30,30,0.15));
+  animation: thinkPulse 1.15s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+
+.think-bar:nth-child(1) { height: 16px; animation-delay: 0s; }
+.think-bar:nth-child(2) { height: 28px; animation-delay: 0.12s; }
+.think-bar:nth-child(3) { height: 40px; animation-delay: 0.24s; }
+.think-bar:nth-child(4) { height: 50px; animation-delay: 0.36s; }
+.think-bar:nth-child(5) { height: 40px; animation-delay: 0.48s; }
+.think-bar:nth-child(6) { height: 28px; animation-delay: 0.6s; }
+.think-bar:nth-child(7) { height: 16px; animation-delay: 0.72s; }
+
+.think-caption {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+@keyframes thinkPulse {
+  0%, 100% { transform: scaleY(0.55); opacity: 0.45; }
+  50% { transform: scaleY(1.15); opacity: 1; }
+}
+
+@keyframes thinkSweep {
+  0% { transform: translateX(-180px); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateX(320px); opacity: 0; }
+}
+
+/* ── ZONE 3: PROGRESS + MESSAGES ── */
+.bottom-zone {
+  margin-top: 56px;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 16px;
+  width: 100%; max-width: 480px;
+}
+
+.progress-track {
+  width: 100%; height: 2px;
+  background: var(--border);
+  border-radius: 1px; overflow: hidden;
+}
+.progress-fill {
+  height: 100%; width: 0%;
+  background: var(--red);
+  border-radius: 1px;
+  transition: width 7.2s cubic-bezier(0.18, 0.02, 0.15, 1);
+}
+
+.status-msg {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--dim);
+  letter-spacing: 0.14em; text-transform: uppercase;
+  opacity: 1; transition: opacity 0.2s ease;
+  min-height: 14px; text-align: center;
+}
+.status-msg.fade { opacity: 0; }
+
+/* ── CASE SUMMARY CARD ── */
+#summary-card {
+  position: fixed; bottom: 28px; right: 28px; z-index: 100;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--red);
+  padding: 16px 20px;
+  border-radius: 2px;
+  max-width: 260px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  cursor: none;
+}
+#summary-card.vis { opacity: 1; }
+
+.sum-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: var(--dim);
+  letter-spacing: 0.18em; text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.sum-cat {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; color: var(--text);
+  margin-bottom: 6px;
+}
+.sum-detail {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--muted);
+  line-height: 1.75;
+}
+
+@media (max-width: 560px) {
+  #summary-card { display: none; }
+  .pipe-line { width: 44px; }
+}
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+
+<!-- Fixed chrome -->
+<div id="logo-fixed">
+  <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+    <rect x="2" y="6" width="10" height="7" rx="1.2" stroke="#3A3A48" stroke-width="1.2"/>
+    <path d="M4.5 6V4.5a2.5 2.5 0 015 0V6" stroke="#3A3A48" stroke-width="1.2" stroke-linecap="round"/>
+    <circle cx="7" cy="9.5" r="1" fill="#3A3A48"/>
+  </svg>
+  EvidenceLocker
+</div>
+<div id="case-num">CASE NO. <span id="chrome-case-id">EL-0000</span></div>
+
+<!-- Main stage -->
+<div id="stage">
+
+  <!-- Zone 1 -->
+  <div class="status-line">
+    <div class="status-dot"></div>
+    EvidenceLocker &nbsp;·&nbsp; Case Analysis Engine &nbsp;·&nbsp; Active
+  </div>
+
+  <!-- Zone 2 -->
+  <div class="lock-wrap">
+
+    <!-- Padlock SVG -->
+    <svg id="padlock" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Shackle (animated group) -->
+      <g class="lock-shackle" id="shackle">
+        <path
+          d="M26 36V28C26 19.16 32.27 12 40 12C47.73 12 54 19.16 54 28V36"
+          stroke="#3A3A48" stroke-width="3.5" stroke-linecap="round"
+          fill="none"
+        />
+      </g>
+      <!-- Lock body -->
+      <rect x="14" y="34" width="52" height="36" rx="4" fill="#0D0D12" stroke="#3A3A48" stroke-width="2"/>
+      <!-- Keyhole slot -->
+      <circle cx="40" cy="50" r="5" stroke="#3A3A48" stroke-width="1.8"/>
+      <line x1="40" y1="55" x2="40" y2="62" stroke="#3A3A48" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+
+    <div>
+      <div class="lock-case-id" id="lock-case-id">CASE NO. EL-0000</div>
+      <div class="lock-category" id="lock-category">General Matter</div>
+    </div>
+  </div>
+
+  <div class="think-wrap">
+    <div class="think-visual" aria-hidden="true">
+      <div class="think-bar"></div>
+      <div class="think-bar"></div>
+      <div class="think-bar"></div>
+      <div class="think-bar"></div>
+      <div class="think-bar"></div>
+      <div class="think-bar"></div>
+      <div class="think-bar"></div>
+    </div>
+    <div class="think-caption">AI reasoning in progress</div>
+  </div>
+
+  <!-- Zone 2 continued: pipeline + ready -->
+  <div class="pipeline-zone">
+    <div id="pipeline">
+      <!-- Node 1 -->
+      <div class="pipe-node-wrap">
+        <div class="pipe-dot" id="n1"></div>
+        <div class="pipe-label" id="l1">Intake</div>
+      </div>
+      <div class="pipe-line"><div class="pipe-line-fill" id="ln1"></div></div>
+      <!-- Node 2 -->
+      <div class="pipe-node-wrap">
+        <div class="pipe-dot" id="n2"></div>
+        <div class="pipe-label" id="l2">Parsing</div>
+      </div>
+      <div class="pipe-line"><div class="pipe-line-fill" id="ln2"></div></div>
+      <!-- Node 3 -->
+      <div class="pipe-node-wrap">
+        <div class="pipe-dot" id="n3"></div>
+        <div class="pipe-label" id="l3">Statutes</div>
+      </div>
+      <div class="pipe-line"><div class="pipe-line-fill" id="ln3"></div></div>
+      <!-- Node 4 -->
+      <div class="pipe-node-wrap">
+        <div class="pipe-dot" id="n4"></div>
+        <div class="pipe-label" id="l4">Evidence</div>
+      </div>
+      <div class="pipe-line"><div class="pipe-line-fill" id="ln4"></div></div>
+      <!-- Node 5 -->
+      <div class="pipe-node-wrap">
+        <div class="pipe-dot" id="n5"></div>
+        <div class="pipe-label" id="l5">Drafting</div>
+      </div>
+    </div>
+
+    <div id="ready-msg">Case file ready.</div>
+  </div>
+
+  <!-- Zone 3 -->
+  <div class="bottom-zone">
+    <div class="progress-track">
+      <div class="progress-fill" id="prog-fill"></div>
+    </div>
+    <div class="status-msg" id="status-msg">Identifying applicable statutes...</div>
+  </div>
+
+</div><!-- /stage -->
+
+<!-- Case summary card -->
+<div id="summary-card">
+  <div class="sum-label">Case Summary</div>
+  <div class="sum-cat" id="sum-cat">—</div>
+  <div class="sum-detail" id="sum-detail"></div>
+</div>
+
+<script>
+const GEMINI_API_KEY = window.__EVIDENCELOCKER_CONFIG__?.GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+const ANALYSIS_CACHE_KEY = 'el_analysis_cache';
+const COMBINED_SYSTEM = `You are a litigation attorney. Analyze this case and respond with EXACTLY these sections using these headers on their own lines.
+Use plain text only.
+Do NOT use markdown, decorative separators, box drawing characters, or extra headers.
+Keep the full response concise enough to avoid truncation.
+
+[VIOLATIONS]
+List 3 strongest laws or claims only. Number them 1-3. For each give: statute or claim, short explanation, why it applies, likely remedy.
+
+[EVIDENCE]
+List 6 numbered items only. For each give: what it is, how to get it, why it matters. Mark the 2 most important items with [CRITICAL].
+
+[LETTER]
+Write one concise demand letter under 350 words. Include date, salutation, summary facts, legal basis, amount if provided, 14-day deadline, and sign "Legal Counsel, EvidenceLocker".
+
+[ROADMAP]
+List 5 numbered next steps only. For each give: agency or court, timing, cost if any, and what to bring.
+
+[STRATEGY]
+Line 1: success percentage number only.
+Line 2: settlement range.
+Line 3: best immediate strategy.
+Line 4: main leverage point.
+Line 5: most likely defense.
+
+[ACTIONS]
+3 items formatted exactly as:
+TITLE|||DETAIL
+TITLE|||DETAIL
+TITLE|||DETAIL
+
+[TIMELINE]
+JSON array only with 4 items max: [{"title":"...","timeframe":"...","description":"..."}]`;
+
+/* ── CURSOR ── */
+const cur = document.getElementById('cursor');
+let mx = innerWidth/2, my = innerHeight/2, cx = mx, cy = my;
+document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+const summaryCard = document.getElementById('summary-card');
+summaryCard.addEventListener('mouseenter', () => cur.classList.add('big'));
+summaryCard.addEventListener('mouseleave', () => cur.classList.remove('big'));
+(function anim() {
+  cx += (mx - cx) * 0.14; cy += (my - cy) * 0.14;
+  cur.style.left = cx + 'px'; cur.style.top = cy + 'px';
+  requestAnimationFrame(anim);
+})();
+
+/* ── LOAD CASE DATA ── */
+let caseData = null;
+try { caseData = JSON.parse(localStorage.getItem('el_case') || 'null'); } catch(e) {}
+
+const caseId   = caseData?.caseId   || 'EL-0000';
+const category = caseData?.category || 'General Matter';
+const stateVal = caseData?.state    || '';
+const amount   = caseData?.amount   || '';
+const evidence = caseData?.evidence || [];
+const notes    = caseData?.notes    || '';
+
+/* Populate chrome */
+document.getElementById('chrome-case-id').textContent = caseId;
+document.getElementById('lock-case-id').textContent   = 'CASE NO. ' + caseId;
+document.getElementById('lock-category').textContent  = category;
+
+/* Populate summary card */
+document.getElementById('sum-cat').textContent = category;
+let detailLines = [];
+if (stateVal) detailLines.push(stateVal);
+if (amount)   detailLines.push('$' + Number(amount).toLocaleString('en-US'));
+if (evidence.length) detailLines.push(evidence.length + ' item' + (evidence.length !== 1 ? 's' : '') + ' of evidence');
+document.getElementById('sum-detail').innerHTML = detailLines.join('<br>');
+const userMsg = `Category: ${category}\nDescription: ${caseData?.description || 'Not specified'}\nDate started: ${caseData?.date || 'Not specified'}\nState/Jurisdiction: ${stateVal || 'Not specified'}\nFinancial damage: ${amount ? '$' + amount : 'Not specified'}\nEvidence available: ${evidence.join(', ') || 'None specified'}\nAdditional notes: ${notes || 'None'}`;
+let analysisPromise = null;
+
+/* ── PAGE IN ── */
+window.addEventListener('load', () => {
+  document.body.classList.add('loaded');
+
+  if (!caseData) {
+    setTimeout(() => { window.location.href = 'intake.html'; }, 900);
+    return;
+  }
+
+  try { localStorage.removeItem(ANALYSIS_CACHE_KEY); } catch(e) {}
+  analysisPromise = prepareAnalysis();
+
+  /* Kick progress bar immediately */
+  requestAnimationFrame(() => {
+    document.getElementById('prog-fill').style.width = '100%';
+  });
+
+  runSequence();
+});
+
+/* ── STATUS MESSAGES ── */
+const msgs = [
+  'Identifying applicable statutes...',
+  'Cross-referencing federal law...',
+  'Mapping evidence requirements...',
+  'Drafting demand language...',
+  'Compiling case package...',
+];
+let msgIdx = 0;
+const msgEl = document.getElementById('status-msg');
+
+function cycleMsg() {
+  msgEl.classList.add('fade');
+  setTimeout(() => {
+    msgIdx = (msgIdx + 1) % msgs.length;
+    msgEl.textContent = msgs[msgIdx];
+    msgEl.classList.remove('fade');
+  }, 200);
+}
+const msgInterval = setInterval(cycleMsg, 1400);
+
+/* ── HELPERS ── */
+function lit(nodeId, lineId) {
+  document.getElementById(nodeId).classList.add('lit');
+  document.getElementById('l' + nodeId.slice(1)).classList.add('vis');
+  if (lineId) {
+    requestAnimationFrame(() => {
+      document.getElementById(lineId).style.width = '100%';
+    });
+  }
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function splitSections(text) {
+  const cleaned = text
+    .replace(/\r/g, '')
+    .replace(/\*\*(\s*\[?(VIOLATIONS|EVIDENCE|LETTER|ROADMAP|STRATEGY|ACTIONS|TIMELINE)\]?\s*)\*\*/gi, '$1')
+    .replace(/__(\s*\[?(VIOLATIONS|EVIDENCE|LETTER|ROADMAP|STRATEGY|ACTIONS|TIMELINE)\]?\s*)__+/gi, '$1');
+
+  const normalized = cleaned.replace(/^.*$/gm, line => {
+    const t = line.trim();
+    if (!t) return line;
+    if (/[a-z]/.test(t)) return line;
+    const upper = t.toUpperCase();
+    if (upper.length > 40) return line;
+    const keys = ['VIOLATIONS', 'EVIDENCE', 'LETTER', 'ROADMAP', 'STRATEGY', 'ACTIONS', 'TIMELINE'];
+    for (const k of keys) {
+      if (upper.includes(k)) return `[${k}]`;
+    }
+    return line;
+  });
+
+  const re = /^\s*(?:#{1,6}\s*|[-*+]\s*|>\s*)?\[?(VIOLATIONS|EVIDENCE|LETTER|ROADMAP|STRATEGY|ACTIONS|TIMELINE)\]?\s*(?::|—|-)?\s*$/gmi;
+  const matches = [...normalized.matchAll(re)];
+  const out = {};
+  for (let i = 0; i < matches.length; i++) {
+    const key = matches[i][1].toUpperCase();
+    const start = matches[i].index + matches[i][0].length;
+    const end = i + 1 < matches.length ? matches[i + 1].index : normalized.length;
+    out[key] = normalized.slice(start, end).trim();
+  }
+  return out;
+}
+
+async function callGemini(sys, prompt, maxTokens = 8192) {
+  if (!GEMINI_API_KEY || GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY') {
+    console.warn('Set GEMINI_API_KEY in Vercel environment variables before deploying.');
+    return '';
+  }
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(GEMINI_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            role: 'user',
+            parts: [{ text: sys + '\n\n---\n\n' + prompt }]
+          }],
+          generationConfig: { temperature: 0.65, maxOutputTokens: maxTokens }
+        })
+      });
+
+      if (res.status === 429) {
+        if (attempt < 3) {
+          await sleep(3000 * attempt);
+          continue;
+        }
+        return '';
+      }
+
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+
+      const data = await res.json();
+      return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    } catch (err) {
+      if (attempt < 3) {
+        await sleep(2000 * attempt);
+        continue;
+      }
+      console.error('Loading analysis failed:', err);
+      return '';
+    }
+  }
+  return '';
+}
+
+async function fillMissingSections(baseSections) {
+  const required = ['VIOLATIONS', 'EVIDENCE', 'LETTER', 'ROADMAP', 'STRATEGY', 'ACTIONS', 'TIMELINE'];
+  const missing = required.filter(k => !(baseSections[k] || '').trim());
+  if (!missing.length) return baseSections;
+
+  const prompt = `Some required sections were missing or truncated.
+Return ONLY these sections and use these exact headers on their own lines:
+${missing.map(k => `[${k}]`).join('\n')}
+
+Rules:
+- Plain text only
+- No decorative separators
+- Be concise
+- Do not repeat sections that were not requested`;
+
+  const text = await callGemini(prompt, userMsg, 4096);
+  if (!text) return baseSections;
+  const recovered = splitSections(text);
+  return { ...baseSections, ...recovered };
+}
+
+async function prepareAnalysis() {
+  const text = await callGemini(COMBINED_SYSTEM, userMsg, 8192);
+  if (!text) return false;
+
+  let rawText = text;
+  let sections = splitSections(rawText);
+  if (Object.keys(sections).length < 2) {
+    rawText = await callGemini(COMBINED_SYSTEM + '\n\nReturn headers exactly as specified.', userMsg, 8192);
+    if (!rawText) return false;
+    sections = splitSections(rawText);
+    if (Object.keys(sections).length < 2) return false;
+  }
+  sections = await fillMissingSections(sections);
+
+  try {
+    localStorage.setItem(ANALYSIS_CACHE_KEY, JSON.stringify({
+      caseId,
+      userMsg,
+      rawText,
+      sections,
+      cachedAt: new Date().toISOString()
+    }));
+  } catch (e) {}
+
+  return true;
+}
+
+/* ── MAIN SEQUENCE ── */
+async function runSequence() {
+  await delay(700);
+  lit('n1', 'ln1');
+
+  await delay(1000);
+  lit('n2', 'ln2');
+
+  await delay(900);
+  /* Open padlock */
+  document.getElementById('shackle').classList.add('open');
+
+  await delay(200);
+  lit('n3', 'ln3');
+
+  await delay(1000);
+  lit('n4', 'ln4');
+
+  await delay(1000);
+  lit('n5', null);
+
+  await delay(600);
+
+  const analysisReady = analysisPromise ? await analysisPromise : false;
+  if (!analysisReady) {
+    window.location.href = 'results.html';
+    return;
+  }
+
+  /* Stop cycling messages */
+  clearInterval(msgInterval);
+  msgEl.classList.add('fade');
+
+  /* Pipeline fades only at the end */
+  document.getElementById('pipeline').classList.add('hidden');
+
+  await delay(250);
+  /* "Case file ready." flashes in briefly */
+  document.getElementById('ready-msg').classList.add('vis');
+
+  await delay(450);
+  document.getElementById('ready-msg').classList.remove('vis');
+
+  /* Fade out page */
+  document.body.classList.add('fade-out');
+
+  await delay(500);
+  window.location.href = 'results.html';
+}
+
+/* Summary card fade-in at 600ms */
+setTimeout(() => {
+  document.getElementById('summary-card').classList.add('vis');
+}, 600);
+</script>
+</body>
+</html>

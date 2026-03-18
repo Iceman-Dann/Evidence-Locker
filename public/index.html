@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="icon" type="image/png" href="favicon.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EvidenceLocker — Build Your Case. Get What You're Owed.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #07070A;
+    --cream: #F0EBE0;
+    --cream-2: #E0D9CE;
+    --red: #C41E1E;
+    --text: #E8E4DC;
+    --muted: #968E86;
+    --cream-text: #1C1814;
+    --cream-muted: #706A60;
+    --border: #1A1A22;
+    --border-2: #242430;
+    --green: #2D7A3A;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--bg); font-family: 'Inter', sans-serif; cursor: none; overflow-x: hidden; }
+  body { opacity: 0; transition: opacity 0.7s ease; }
+  body.loaded { opacity: 1; }
+  ::selection { background: var(--red); color: #fff; }
+
+  #cursor {
+    position: fixed; width: 8px; height: 8px;
+    background: var(--red); border-radius: 50%;
+    pointer-events: none; z-index: 99999;
+    transform: translate(-50%, -50%);
+    transition: width 0.22s ease, height 0.22s ease, background 0.22s ease, border 0.22s ease;
+  }
+  #cursor.big { width: 34px; height: 34px; background: transparent; border: 1.5px solid var(--red); }
+  #cursor.light { background: var(--cream-text); }
+  #cursor.big.light { background: transparent; border-color: var(--cream-text); }
+
+  #pbar { position: fixed; top: 0; left: 0; height: 2px; background: var(--red); width: 0%; z-index: 9990; }
+
+  #case-num {
+    position: fixed; top: 26px; right: 28px; z-index: 1000;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: #3A3A48; letter-spacing: 0.14em; pointer-events: none;
+  }
+  #logo-fixed {
+    position: fixed; bottom: 26px; left: 28px; z-index: 1000;
+    display: flex; align-items: center; gap: 8px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: #3A3A48; letter-spacing: 0.06em; pointer-events: none;
+  }
+
+  .reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.65s ease, transform 0.65s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+  .d1{transition-delay:.1s}.d2{transition-delay:.2s}.d3{transition-delay:.3s}.d4{transition-delay:.4s}.d5{transition-delay:.5s}
+
+  /* ═══ HERO ═══ */
+  #hero { display: grid; grid-template-columns: 1fr 1fr; min-height: 100vh; }
+
+  .hero-dark {
+    background: var(--bg); padding: 100px 72px;
+    display: flex; flex-direction: column; justify-content: center;
+    border-right: 1px solid var(--border); position: relative;
+  }
+  .hero-cream {
+    background: var(--cream); padding: 80px 72px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
+  }
+  .hero-cream::before {
+    content: ''; position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    background-size: 200px; pointer-events: none; opacity: 0.7;
+  }
+  .hero-cream::after {
+    content: 'DRAFT'; position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%,-50%) rotate(-30deg);
+    font-family: 'JetBrains Mono', monospace; font-size: 100px;
+    color: rgba(28,24,20,0.05); pointer-events: none; user-select: none; letter-spacing: 0.2em;
+  }
+
+  .case-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: #3A3A48; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 40px;
+  }
+  .hero-h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(48px,5vw,78px); font-weight: 400;
+    color: var(--text); line-height: 1.05;
+  }
+  .hero-h1 .dim { color: rgba(232,228,220,0.28); display: block; }
+  .hero-body { font-size: 15px; font-weight: 300; color: var(--muted); margin-top: 32px; line-height: 1.75; max-width: 400px; }
+  .red-rule { width: 48px; height: 2px; background: var(--red); margin: 36px 0; }
+
+  .cta-btn {
+    display: inline-flex; align-items: center; gap: 12px;
+    background: var(--red); color: #fff;
+    font-size: 12px; font-weight: 600;
+    padding: 14px 32px; border-radius: 2px; border: none; cursor: none;
+    text-decoration: none; letter-spacing: 0.06em; text-transform: uppercase;
+    align-self: flex-start; transition: opacity 0.2s ease;
+  }
+  .cta-btn:hover { opacity: 0.86; }
+  .arr { transition: transform 0.2s ease; display: inline-flex; }
+  .cta-btn:hover .arr { transform: translateX(4px); }
+
+  .scroll-ind {
+    position: absolute; bottom: 36px; left: 72px;
+    display: flex; align-items: center; gap: 12px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: #3A3A48; letter-spacing: 0.14em; text-transform: uppercase;
+    transition: opacity 0.4s ease;
+  }
+  .scroll-ind.gone { opacity: 0; }
+  .tick { width: 32px; height: 1px; background: #3A3A48; overflow: hidden; position: relative; }
+  .tick::after {
+    content: ''; position: absolute; top: 0; left: -100%;
+    width: 100%; height: 100%; background: var(--muted);
+    animation: tickAnim 1.8s ease-in-out infinite;
+  }
+  @keyframes tickAnim { 0%{left:-100%} 100%{left:100%} }
+
+  /* DOC CARD */
+  .doc-card {
+    background: var(--cream); width: 100%; max-width: 400px;
+    border: 1px solid var(--cream-2); position: relative; z-index: 1;
+    box-shadow: 0 28px 64px rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.1);
+    transform: rotate(0.4deg); transition: transform 0.4s ease, box-shadow 0.4s ease;
+  }
+  .doc-card:hover { transform: rotate(0deg); box-shadow: 0 40px 80px rgba(0,0,0,0.28); }
+  .doc-top-rule { height: 3px; background: var(--red); }
+  .doc-head { padding: 14px 24px; border-bottom: 1px solid var(--cream-2); display: flex; justify-content: space-between; }
+  .doc-head span { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--cream-muted); letter-spacing: 0.14em; text-transform: uppercase; }
+  .doc-body { padding: 28px 24px 72px; }
+  .doc-title { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--cream-text); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 20px; font-weight: 500; }
+  .doc-line { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--cream-muted); line-height: 2; }
+  .rx {
+    display: inline-block; background: var(--cream-text); color: transparent;
+    border-radius: 1px; padding: 0 5px; margin: 0 1px;
+    transition: background 0.4s ease, color 0.4s ease; cursor: none; font-size: 12px; user-select: none;
+  }
+  .doc-card:hover .rx { background: transparent; color: var(--cream-muted); }
+  .doc-amt { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--cream-2); font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--cream-muted); letter-spacing: 0.1em; text-transform: uppercase; }
+  .doc-amt strong { font-family: 'DM Serif Display', serif; font-size: 32px; font-weight: 400; color: var(--cream-text); display: block; margin-top: 6px; }
+  .doc-stamp { position: absolute; bottom: 28px; right: 24px; border: 2.5px solid var(--red); padding: 7px 16px; transform: rotate(-9deg); font-family: 'JetBrains Mono', monospace; font-size: 15px; color: var(--red); letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.8; pointer-events: none; }
+  .doc-foot { border-top: 1px solid var(--cream-2); padding: 11px 24px; display: flex; justify-content: space-between; }
+  .doc-foot span { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--cream-muted); letter-spacing: 0.1em; text-transform: uppercase; }
+  .dot-g { display: inline-block; width: 6px; height: 6px; background: var(--green); border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+
+  /* ═══ STATS ═══ */
+  #stats { min-height: 100vh; display: flex; align-items: center; padding: 100px 72px; border-top: 1px solid var(--border); }
+  .stats-l { width: 52%; padding-right: 72px; border-right: 1px solid var(--border-2); }
+  .exhibit { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #3A3A48; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 28px; }
+  .big-n { font-family: 'DM Serif Display', serif; font-size: clamp(72px,9vw,132px); font-weight: 400; color: var(--text); line-height: 1; letter-spacing: -0.02em; }
+  .big-n-label { font-size: 14px; font-weight: 300; color: var(--muted); margin-top: 24px; line-height: 1.75; max-width: 320px; }
+  .stats-r { width: 48%; padding-left: 72px; }
+  .drow { display: grid; grid-template-columns: 160px 1fr; gap: 20px; padding: 28px 0; border-bottom: 1px solid var(--border-2); transition: border-color 0.2s ease; cursor: none; }
+  .drow:first-child { border-top: 1px solid var(--border-2); }
+  .drow:hover { border-bottom-color: var(--muted); }
+  .drow-num { font-family: 'DM Serif Display', serif; font-size: clamp(24px,2.8vw,38px); font-weight: 400; color: var(--text); letter-spacing: -0.02em; line-height: 1; }
+  .drow-desc { font-size: 13px; font-weight: 300; color: var(--muted); line-height: 1.65; align-self: center; }
+
+  /* ═══ STATEMENT ═══ */
+  #statement { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 100px 72px; border-top: 1px solid var(--border); position: relative; overflow: hidden; text-align: center; }
+  #statement::before { content: ''; position: absolute; inset: 0; background-image: repeating-linear-gradient(to bottom, transparent, transparent 55px, rgba(255,255,255,0.02) 55px, rgba(255,255,255,0.02) 56px); pointer-events: none; }
+  .stmt-inner { position: relative; z-index: 1; max-width: 880px; }
+  .motion-lbl { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #3A3A48; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 44px; }
+  .s1 { font-family: 'DM Serif Display', serif; font-size: clamp(38px,5.5vw,72px); font-weight: 400; color: var(--text); line-height: 1.1; opacity: 0; transform: translateX(-48px); transition: opacity 0.55s ease, transform 0.55s ease; }
+  .s2 { font-family: 'DM Serif Display', serif; font-size: clamp(38px,5.5vw,72px); font-weight: 400; font-style: italic; color: var(--text); line-height: 1.1; margin-top: 4px; opacity: 0; transform: translateX(48px); transition: opacity 0.55s ease 0.25s, transform 0.55s ease 0.25s; }
+  .s1.in { opacity: 1; transform: none; }
+  .s2.in { opacity: 0.38; transform: none; }
+  .rw { color: var(--red); font-style: normal; }
+
+  /* ═══ PROCESS ═══ */
+  #process { min-height: 100vh; display: flex; align-items: center; padding: 100px 72px; gap: 100px; border-top: 1px solid var(--border); }
+  .proc-l { width: 38%; flex-shrink: 0; }
+  .sec-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #3A3A48; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 22px; }
+  .proc-head { font-family: 'DM Serif Display', serif; font-size: clamp(30px,3.2vw,50px); font-weight: 400; color: var(--text); line-height: 1.15; }
+  .proc-r { width: 62%; }
+  .step { padding: 36px 0; border-top: 1px solid var(--border-2); cursor: none; transition: border-color 0.18s ease; }
+  .step:last-child { border-bottom: 1px solid var(--border-2); }
+  .step:hover { border-top-color: var(--red); }
+  .step-count { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--red); letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 12px; }
+  .step-title { font-family: 'DM Serif Display', serif; font-size: clamp(18px,1.8vw,24px); font-weight: 400; color: var(--text); margin-bottom: 10px; line-height: 1.2; }
+  .step-desc { font-size: 14px; font-weight: 300; color: var(--muted); line-height: 1.75; max-width: 440px; }
+
+  /* ═══ DELIVERABLES — CREAM ═══ */
+  #deliverables { min-height: 100vh; background: var(--cream); padding: 100px 72px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; border-top: 2px solid rgba(0,0,0,0.06); }
+  #deliverables::before { content: ''; position: absolute; inset: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); background-size: 200px; pointer-events: none; }
+  .del-inner { position: relative; z-index: 1; }
+  .del-eye { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--cream-muted); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 24px; }
+  .del-head { font-family: 'DM Serif Display', serif; font-size: clamp(30px,3.8vw,58px); font-weight: 400; color: var(--cream-text); line-height: 1.1; max-width: 680px; }
+  .del-sub { font-size: 15px; font-weight: 300; color: var(--cream-muted); margin-top: 20px; line-height: 1.7; }
+  .del-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 0; margin-top: 60px; }
+  .del-item { padding: 0 40px; border-left: 1px solid var(--cream-2); }
+  .del-item:first-child { border-left: none; padding-left: 0; }
+  .del-n { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--red); letter-spacing: 0.16em; margin-bottom: 16px; }
+  .del-title { font-family: 'DM Serif Display', serif; font-size: 22px; font-weight: 400; color: var(--cream-text); margin-bottom: 12px; line-height: 1.2; }
+  .del-desc { font-size: 13px; font-weight: 300; color: var(--cream-muted); line-height: 1.7; }
+  .ticker-wrap { width: 100%; overflow: hidden; border-top: 1px solid var(--cream-2); padding: 14px 0; margin-top: 56px; position: relative; z-index: 1; }
+  .ticker-wrap:hover .ticker-inner { animation-play-state: paused; }
+  .ticker-inner { display: flex; width: max-content; animation: tkMove 30s linear infinite; }
+  .titem { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--cream-muted); text-transform: uppercase; letter-spacing: 0.12em; white-space: nowrap; padding: 0 4px; flex-shrink: 0; }
+  @keyframes tkMove { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+
+  /* ═══════════════════════════════════════════════════════
+     LIVE DEMO SECTION — THE INSANE PART
+  ═══════════════════════════════════════════════════════ */
+  #demo {
+    min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr;
+    border-top: 1px solid var(--border);
+  }
+
+  /* LEFT — INPUT PANEL */
+  .demo-input-panel {
+    padding: 80px 64px; display: flex; flex-direction: column; justify-content: center;
+    border-right: 1px solid var(--border-2); position: relative;
+  }
+
+  .demo-lbl { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #3A3A48; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 28px; }
+
+  .demo-title { font-family: 'DM Serif Display', serif; font-size: clamp(28px,3vw,44px); font-weight: 400; color: var(--text); line-height: 1.1; margin-bottom: 12px; }
+
+  .demo-sub { font-size: 14px; font-weight: 300; color: var(--muted); line-height: 1.7; margin-bottom: 32px; }
+
+  .demo-textarea {
+    width: 100%; background: #0D0D12; border: 1px solid var(--border-2);
+    color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    line-height: 1.7; padding: 20px; border-radius: 2px; resize: none; height: 140px;
+    outline: none; transition: border-color 0.2s ease;
+    cursor: text;
+  }
+  .demo-textarea:focus { border-color: var(--red); }
+  .demo-textarea::placeholder { color: #3A3A48; }
+
+  .demo-examples {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; margin-bottom: 28px;
+  }
+  .demo-ex {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--muted); border: 1px solid var(--border-2);
+    padding: 6px 12px; border-radius: 2px; cursor: none;
+    transition: border-color 0.15s ease, color 0.15s ease;
+    letter-spacing: 0.04em;
+  }
+  .demo-ex:hover { border-color: var(--red); color: var(--text); }
+
+  .demo-run {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--red); color: #fff;
+    font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600;
+    padding: 14px 28px; border-radius: 2px; border: none; cursor: none;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    align-self: flex-start; transition: opacity 0.2s ease;
+    position: relative; overflow: hidden;
+  }
+  .demo-run:hover { opacity: 0.86; }
+  .demo-run:disabled { opacity: 0.4; }
+
+  /* Scan line animation on button when running */
+  @keyframes scanLine {
+    0% { top: -100%; } 100% { top: 200%; }
+  }
+  .demo-run.scanning::after {
+    content: ''; position: absolute; left: 0; top: -100%;
+    width: 100%; height: 30%; background: rgba(255,255,255,0.15);
+    animation: scanLine 0.8s ease-in-out infinite;
+  }
+
+  /* RIGHT — OUTPUT PANEL */
+  .demo-output-panel {
+    background: #0A0A0E; padding: 48px 48px;
+    display: flex; flex-direction: column; overflow: hidden; position: relative;
+  }
+
+  /* Terminal header bar */
+  .terminal-bar {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 28px;
+    padding-bottom: 16px; border-bottom: 1px solid var(--border-2);
+  }
+  .t-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .t-dot.red { background: #FF5F57; }
+  .t-dot.yellow { background: #FFBD2E; }
+  .t-dot.green { background: #28C840; }
+  .terminal-title { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #3A3A48; letter-spacing: 0.12em; margin-left: 8px; }
+
+  /* Empty state */
+  .demo-empty {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    opacity: 1; transition: opacity 0.3s ease;
+  }
+  .demo-empty.hidden { opacity: 0; pointer-events: none; position: absolute; }
+  .empty-icon { margin-bottom: 20px; opacity: 0.15; }
+  .empty-text { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #3A3A48; letter-spacing: 0.1em; text-align: center; line-height: 1.8; }
+
+  /* Scanning state */
+  .demo-scanning {
+    flex: 1; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 24px;
+  }
+  .demo-scanning.active { display: flex; }
+
+  .scan-ring {
+    width: 56px; height: 56px; border-radius: 50%;
+    border: 1px solid var(--border-2);
+    border-top-color: var(--red);
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { 0%{transform:rotate(0)} 100%{transform:rotate(360deg)} }
+
+  .scan-steps { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 320px; }
+  .scan-step {
+    display: flex; align-items: center; gap: 12px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #3A3A48;
+    letter-spacing: 0.06em; opacity: 0; transition: opacity 0.3s ease;
+  }
+  .scan-step.active { color: var(--muted); opacity: 1; }
+  .scan-step.done { color: var(--green); opacity: 1; }
+  .scan-step .ss-icon { width: 14px; flex-shrink: 0; }
+
+  /* Results */
+  .demo-results {
+    flex: 1; display: none; flex-direction: column; gap: 0; overflow-y: auto;
+    scrollbar-width: thin; scrollbar-color: var(--border-2) transparent;
+  }
+  .demo-results.active { display: flex; }
+
+  /* Result blocks */
+  .res-block { border-bottom: 1px solid var(--border-2); padding: 20px 0; }
+  .res-block:first-child { padding-top: 0; }
+  .res-block:last-child { border-bottom: none; }
+
+  .res-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: var(--red); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 10px;
+  }
+
+  .res-line {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    color: var(--text); line-height: 1.9; opacity: 0;
+    animation: fadeLine 0.2s ease forwards;
+  }
+  @keyframes fadeLine { to { opacity: 1; } }
+
+  .res-line .hl { color: var(--green); }
+  .res-line .hl-red { color: var(--red); }
+  .res-line .hl-dim { color: var(--muted); }
+
+  /* Severity badge */
+  .severity-row {
+    display: flex; align-items: center; gap: 12px; margin-top: 6px;
+  }
+  .sev-bar {
+    flex: 1; height: 3px; background: var(--border-2); border-radius: 2px; overflow: hidden;
+  }
+  .sev-fill {
+    height: 100%; background: var(--red); border-radius: 2px;
+    width: 0; transition: width 1s ease 0.2s;
+  }
+  .sev-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--red); letter-spacing: 0.1em; white-space: nowrap; }
+
+  /* Cursor blink */
+  .cursor-blink { display: inline-block; width: 6px; height: 12px; background: var(--red); margin-left: 3px; animation: blink 0.9s step-end infinite; vertical-align: middle; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* ═══ FINAL CTA ═══ */
+  #final { min-height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 80px 40px; border-top: 1px solid var(--border); position: relative; overflow: hidden; }
+  .ghost-final { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-family: 'DM Serif Display', serif; font-size: clamp(80px,13vw,200px); font-weight: 400; color: transparent; -webkit-text-stroke: 1px rgba(237,237,238,0.03); pointer-events: none; user-select: none; white-space: nowrap; z-index: 0; }
+  .final-inner { position: relative; z-index: 1; max-width: 700px; }
+  .final-head { font-family: 'DM Serif Display', serif; font-size: clamp(38px,5vw,68px); font-weight: 400; color: var(--text); line-height: 1.1; margin: 28px 0 20px; }
+  .final-body { font-size: 16px; font-weight: 300; color: var(--muted); line-height: 1.75; margin-bottom: 40px; }
+  .final-sub { display: block; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #3A3A48; letter-spacing: 0.18em; text-transform: uppercase; margin-top: 20px; }
+
+  /* ═══ FOOTER ═══ */
+  footer { background: var(--bg); border-top: 1px solid var(--border); padding: 26px 72px; display: flex; align-items: center; justify-content: space-between; }
+  .foot-logo { display: flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #3A3A48; letter-spacing: 0.06em; }
+  .foot-r { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #3A3A48; letter-spacing: 0.1em; text-transform: uppercase; }
+
+  /* RESPONSIVE */
+  @media (max-width: 960px) {
+    #hero,#demo { grid-template-columns: 1fr; }
+    .hero-dark { padding: 80px 32px; min-height: 70vh; }
+    .hero-cream { padding: 60px 32px; }
+    .scroll-ind { left: 32px; }
+    #stats { flex-direction: column; padding: 80px 32px; }
+    .stats-l { width: 100%; padding-right: 0; border-right: none; border-bottom: 1px solid var(--border-2); padding-bottom: 56px; margin-bottom: 56px; }
+    .stats-r { width: 100%; padding-left: 0; }
+    #process { flex-direction: column; padding: 80px 32px; gap: 48px; }
+    .proc-l,.proc-r { width: 100%; }
+    #deliverables { padding: 80px 32px; }
+    .del-grid { grid-template-columns: 1fr 1fr; gap: 40px; }
+    .del-item { border-left: none; padding-left: 0; }
+    .del-item:nth-child(even) { border-left: 1px solid var(--cream-2); padding-left: 32px; }
+    .demo-input-panel { padding: 60px 32px; border-right: none; border-bottom: 1px solid var(--border-2); }
+    .demo-output-panel { padding: 40px 32px; min-height: 60vh; }
+    #statement { padding: 80px 32px; }
+    footer { padding: 24px 32px; flex-direction: column; gap: 12px; text-align: center; }
+    #logo-fixed,#case-num { display: none; }
+    .drow { grid-template-columns: 130px 1fr; }
+  }
+  @media (max-width: 560px) {
+    .del-grid { grid-template-columns: 1fr; }
+    .del-item:nth-child(even) { border-left: none; padding-left: 0; }
+    .hero-dark,.hero-cream,.demo-input-panel { padding-left: 24px; padding-right: 24px; }
+    .demo-output-panel { padding: 32px 24px; }
+    #stats,#process,#deliverables,#statement,#final { padding-left: 24px; padding-right: 24px; }
+    footer { padding: 20px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="pbar"></div>
+<div id="cursor"></div>
+<div id="case-num">CASE NO. EL-2024-001</div>
+<div id="logo-fixed">
+  <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+    <rect x="2" y="6" width="10" height="7" rx="1.2" stroke="#3A3A48" stroke-width="1.2"/>
+    <path d="M4.5 6V4.5a2.5 2.5 0 015 0V6" stroke="#3A3A48" stroke-width="1.2" stroke-linecap="round"/>
+    <circle cx="7" cy="9.5" r="1" fill="#3A3A48"/>
+  </svg>
+  EvidenceLocker
+</div>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-dark">
+    <div class="case-label reveal">Case No. EL-2024-001 · Intake Open</div>
+    <h1 class="hero-h1 reveal d1">Build your case.<br><span class="dim">Get what you're owed.</span></h1>
+    <p class="hero-body reveal d2">Describe what happened. We identify every law broken, map the evidence you need, and draft the letters that make them respond.</p>
+    <div class="red-rule reveal d3"></div>
+    <a href="intake.html" class="cta-btn reveal d3">
+      Open Your Case File
+      <span class="arr"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M7.5 3l4 4-4 4" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    </a>
+    <div class="scroll-ind reveal d5" id="scrollInd"><div class="tick"></div><span>Scroll to continue</span></div>
+  </div>
+  <div class="hero-cream">
+    <div class="doc-card reveal d2">
+      <div class="doc-top-rule"></div>
+      <div class="doc-head"><span>Demand Letter · Draft</span><span>EL-001-DL</span></div>
+      <div class="doc-body">
+        <div class="doc-title">Notice of Violation &amp; Demand for Relief</div>
+        <div class="doc-line">Pursuant to the matter of <span class="rx">Marcus T. v. Northgate LLC</span></div>
+        <div class="doc-line">and the violation of <span class="rx">Cal. Civ. Code § 1950.5(g)</span></div>
+        <div class="doc-line">regarding unlawful retention of security deposit,</div>
+        <div class="doc-line">the undersigned hereby demands return of all</div>
+        <div class="doc-line">withheld funds within <span class="rx">14 calendar days</span> or</div>
+        <div class="doc-line">further action will be initiated without notice.</div>
+        <div class="doc-amt">Total amount owed:<strong>$3,200.00</strong></div>
+      </div>
+      <div class="doc-stamp">Sent</div>
+      <div class="doc-foot"><span><span class="dot-g"></span>Active</span><span>EvidenceLocker</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section id="stats">
+  <div class="stats-l">
+    <div class="exhibit reveal">Exhibit A — Scale of the Problem</div>
+    <div class="big-n reveal d1" id="counter">$0B</div>
+    <p class="big-n-label reveal d2">stolen from workers, tenants, and consumers every year. Most of it is never recovered.</p>
+  </div>
+  <div class="stats-r">
+    <div class="drow reveal d1"><div class="drow-num">$3,200</div><div class="drow-desc">Average security deposit stolen by landlords</div></div>
+    <div class="drow reveal d2"><div class="drow-num">18 mo.</div><div class="drow-desc">Average time a wage theft case goes unresolved</div></div>
+    <div class="drow reveal d3"><div class="drow-num">4 in 10</div><div class="drow-desc">People wronged who never take any legal action</div></div>
+  </div>
+</section>
+
+<!-- STATEMENT -->
+<section id="statement">
+  <div class="stmt-inner">
+    <div class="motion-lbl">Motion Filed</div>
+    <p class="s1" id="sLine1">They're counting on you to <span class="rw">do nothing.</span></p>
+    <p class="s2" id="sLine2">We exist to make that strategy fail.</p>
+  </div>
+</section>
+
+<!-- PROCESS -->
+<section id="process">
+  <div class="proc-l reveal">
+    <div class="sec-label">Filing Instructions</div>
+    <h2 class="proc-head">Three steps to a case they cannot ignore.</h2>
+  </div>
+  <div class="proc-r">
+    <div class="step reveal d1"><div class="step-count">Count I · Intake</div><div class="step-title">Tell us what happened</div><div class="step-desc">Describe the situation in plain language. No legal knowledge required. Dates, names, amounts — just tell the story.</div></div>
+    <div class="step reveal d2"><div class="step-count">Count II · Analysis</div><div class="step-title">We map every violation</div><div class="step-desc">Federal statutes, state law, local ordinances. Every applicable regulation identified and mapped directly to your facts.</div></div>
+    <div class="step reveal d3"><div class="step-count">Count III · Delivery</div><div class="step-title">Download your complete package</div><div class="step-desc">Evidence checklist, demand letter, filing roadmap, and timestamped case timeline. Formatted for courts, agencies, and opposing counsel.</div></div>
+  </div>
+</section>
+
+<!-- DELIVERABLES -->
+<section id="deliverables">
+  <div class="del-inner">
+    <div class="del-eye reveal">Evidence in File · Four Documents</div>
+    <h2 class="del-head reveal d1">Everything an attorney charges $400/hr to produce.</h2>
+    <p class="del-sub reveal d2">Generated in minutes. Formatted for courts, agencies, and opposing parties.</p>
+    <div class="del-grid">
+      <div class="del-item reveal d1"><div class="del-n">Doc 01</div><div class="del-title">Violation Report</div><div class="del-desc">Every statute broken, cited by number. Organized for court or agency filing.</div></div>
+      <div class="del-item reveal d2"><div class="del-n">Doc 02</div><div class="del-title">Evidence Checklist</div><div class="del-desc">Exactly what to collect, preserve, and how to obtain each item.</div></div>
+      <div class="del-item reveal d3"><div class="del-n">Doc 03</div><div class="del-title">Demand Letter</div><div class="del-desc">Attorney-grade format with cited statutes, amounts owed, and legal deadline.</div></div>
+      <div class="del-item reveal d4"><div class="del-n">Doc 04</div><div class="del-title">Filing Roadmap</div><div class="del-desc">Step-by-step per jurisdiction. NLRB, EEOC, small claims, state boards.</div></div>
+    </div>
+    <div class="ticker-wrap">
+      <div class="ticker-inner">
+        <span class="titem">VIOLATION REPORT &nbsp;·&nbsp; EVIDENCE CHECKLIST &nbsp;·&nbsp; DEMAND LETTER &nbsp;·&nbsp; FILING ROADMAP &nbsp;·&nbsp; CASE TIMELINE &nbsp;·&nbsp; JURISDICTION ANALYSIS &nbsp;·&nbsp; STATUTE DATABASE &nbsp;·&nbsp; OPPOSING NOTICE &nbsp;·&nbsp; </span>
+        <span class="titem" aria-hidden="true">VIOLATION REPORT &nbsp;·&nbsp; EVIDENCE CHECKLIST &nbsp;·&nbsp; DEMAND LETTER &nbsp;·&nbsp; FILING ROADMAP &nbsp;·&nbsp; CASE TIMELINE &nbsp;·&nbsp; JURISDICTION ANALYSIS &nbsp;·&nbsp; STATUTE DATABASE &nbsp;·&nbsp; OPPOSING NOTICE &nbsp;·&nbsp; </span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ LIVE DEMO -->
+<section id="demo">
+
+  <!-- LEFT: INPUT -->
+  <div class="demo-input-panel reveal">
+    <div class="demo-lbl">Live Demo · Try It Now</div>
+    <h2 class="demo-title">Describe your situation.</h2>
+    <p class="demo-sub">Type anything. What they did. What they took. We'll show you exactly what you have.</p>
+
+    <textarea
+      class="demo-textarea"
+      id="demoInput"
+      placeholder="My landlord kept my $2,400 security deposit and won't respond to my messages..."
+      maxlength="400"
+    ></textarea>
+
+    <div class="demo-examples">
+      <span class="demo-ex" data-val="My landlord refused to return my $2,400 security deposit after I moved out">Landlord deposit</span>
+      <span class="demo-ex" data-val="My employer hasn't paid my overtime for the last 6 months">Unpaid overtime</span>
+      <span class="demo-ex" data-val="A contractor took $7,000, did half the job, and disappeared">Contractor fraud</span>
+      <span class="demo-ex" data-val="My boss fired me after I reported a safety violation to HR">Wrongful termination</span>
+    </div>
+
+    <button class="demo-run" id="demoRun">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 2l9 5-9 5V2z" fill="white"/></svg>
+      Analyze My Case
+    </button>
+  </div>
+
+  <!-- RIGHT: OUTPUT -->
+  <div class="demo-output-panel">
+    <div class="terminal-bar">
+      <div class="t-dot red"></div>
+      <div class="t-dot yellow"></div>
+      <div class="t-dot green"></div>
+      <span class="terminal-title">EvidenceLocker · Case Analysis Engine</span>
+    </div>
+
+    <!-- Empty state -->
+    <div class="demo-empty" id="demoEmpty">
+      <div class="empty-icon">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <rect x="8" y="4" width="28" height="36" rx="2" stroke="#3A3A48" stroke-width="1.2"/>
+          <path d="M14 14h16M14 20h16M14 26h10" stroke="#3A3A48" stroke-width="1.2" stroke-linecap="round"/>
+          <rect x="28" y="28" width="12" height="16" rx="1" fill="#0A0A0E" stroke="#3A3A48" stroke-width="1.2"/>
+          <path d="M31 34l2 2 4-3" stroke="#3A3A48" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="empty-text">Your case analysis<br>will appear here.</div>
+    </div>
+
+    <!-- Scanning state -->
+    <div class="demo-scanning" id="demoScanning">
+      <div class="scan-ring"></div>
+      <div class="scan-steps">
+        <div class="scan-step" id="ss1"><span class="ss-icon">›</span><span>Parsing situation...</span></div>
+        <div class="scan-step" id="ss2"><span class="ss-icon">›</span><span>Identifying violations...</span></div>
+        <div class="scan-step" id="ss3"><span class="ss-icon">›</span><span>Cross-referencing statutes...</span></div>
+        <div class="scan-step" id="ss4"><span class="ss-icon">›</span><span>Building evidence map...</span></div>
+        <div class="scan-step" id="ss5"><span class="ss-icon">›</span><span>Drafting demand letter...</span></div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="demo-results" id="demoResults"></div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section id="final">
+  <div class="ghost-final">Judgment</div>
+  <div class="final-inner">
+    <div class="red-rule reveal" style="margin: 0 auto 28px;"></div>
+    <h2 class="final-head reveal d1">Stop letting them<br>get away with it.</h2>
+    <p class="final-body reveal d2">The legal system was not designed for you. We are.<br>Every dollar they owe you is still yours.</p>
+    <a href="intake.html" class="cta-btn reveal d3" style="margin: 0 auto;">
+      Open Your Case File
+      <span class="arr"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M7.5 3l4 4-4 4" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    </a>
+    <span class="final-sub reveal d4">Free · No Account · 18 Minutes</span>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="foot-logo">
+    <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+      <rect x="2" y="6" width="10" height="7" rx="1.2" stroke="#3A3A48" stroke-width="1.2"/>
+      <path d="M4.5 6V4.5a2.5 2.5 0 015 0V6" stroke="#3A3A48" stroke-width="1.2" stroke-linecap="round"/>
+      <circle cx="7" cy="9.5" r="1" fill="#3A3A48"/>
+    </svg>
+    EvidenceLocker
+  </div>
+  <div class="foot-r">Built for people who fight back.</div>
+</footer>
+
+<script>
+// PAGE LOAD
+window.addEventListener('load', () => {
+  document.body.classList.add('loaded');
+  setTimeout(() => document.querySelectorAll('#hero .reveal').forEach(el => el.classList.add('in')), 100);
+});
+
+// CURSOR
+const cur = document.getElementById('cursor');
+let mx = innerWidth/2, my = innerHeight/2, cx = mx, cy = my;
+document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+document.querySelectorAll('.hero-cream, #deliverables').forEach(el => {
+  el.addEventListener('mouseenter', () => cur.classList.add('light'));
+  el.addEventListener('mouseleave', () => cur.classList.remove('light'));
+});
+document.querySelectorAll('a, button, .step, .drow, .doc-card, .demo-ex').forEach(el => {
+  el.addEventListener('mouseenter', () => cur.classList.add('big'));
+  el.addEventListener('mouseleave', () => cur.classList.remove('big'));
+});
+(function anim() {
+  cx += (mx - cx) * 0.14; cy += (my - cy) * 0.14;
+  cur.style.left = cx + 'px'; cur.style.top = cy + 'px';
+  requestAnimationFrame(anim);
+})();
+
+// PROGRESS BAR
+const pbar = document.getElementById('pbar');
+window.addEventListener('scroll', () => {
+  pbar.style.width = ((scrollY / (document.documentElement.scrollHeight - innerHeight)) * 100) + '%';
+}, { passive: true });
+
+// SCROLL IND
+const si = document.getElementById('scrollInd');
+window.addEventListener('scroll', () => si.classList.toggle('gone', scrollY > 80), { passive: true });
+
+// REVEAL
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); obs.unobserve(e.target); } });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => { if (!el.closest('#hero')) obs.observe(el); });
+
+// COUNTER
+let cFired = false;
+const cEl = document.getElementById('counter');
+function easeOut(t) { return 1 - Math.pow(1-t, 3); }
+new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting && !cFired) {
+      cFired = true;
+      const t0 = performance.now();
+      (function f(now) {
+        const t = Math.min((now-t0)/1800,1);
+        cEl.textContent = '$' + Math.floor(easeOut(t)*50) + 'B';
+        if (t<1) requestAnimationFrame(f); else cEl.textContent = '$50B';
+      })(t0);
+    }
+  });
+}, { threshold: 0.4 }).observe(document.getElementById('stats'));
+
+// STATEMENT
+let sFired = false;
+const sL1 = document.getElementById('sLine1'), sL2 = document.getElementById('sLine2');
+new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting && !sFired) {
+      sFired = true;
+      setTimeout(() => sL1.classList.add('in'), 80);
+      setTimeout(() => sL2.classList.add('in'), 340);
+    }
+  });
+}, { threshold: 0.5 }).observe(document.getElementById('statement'));
+
+// ══════════════════════════════════════════
+// DEMO ENGINE
+// ══════════════════════════════════════════
+
+const CASES = {
+  landlord: {
+    keywords: ['landlord','deposit','rent','lease','apartment','tenant','evict','housing','moved out','move out'],
+    severity: 88,
+    amount: '$2,400 – $7,200',
+    laws: [
+      { code: 'Cal. Civ. Code § 1950.5', desc: 'Security deposit return within 21 days' },
+      { code: 'URLTA § 4.104', desc: 'Written itemization required for deductions' },
+      { code: 'State Housing Code § 17.3', desc: 'Habitability warranty obligations' },
+    ],
+    evidence: [
+      'Move-in / move-out inspection reports',
+      'Bank records showing deposit payment',
+      'All text/email correspondence with landlord',
+      'Timestamped photos of unit condition at departure',
+    ],
+    letter: 'NOTICE OF DEMAND\n\nPursuant to Cal. Civ. Code § 1950.5, you are hereby\nnotified that your failure to return the security\ndeposit within the statutory 21-day period constitutes\na violation. Demand is made for immediate return of\nall funds plus statutory damages of 2x the deposit.',
+  },
+  wage: {
+    keywords: ['overtime','wage','pay','salary','employer','boss','fired','work','hours','paycheck','misclassif','contractor','independent'],
+    severity: 94,
+    amount: '$8,000 – $40,000',
+    laws: [
+      { code: 'FLSA 29 U.S.C. § 207', desc: 'Overtime pay at 1.5x for hours over 40/week' },
+      { code: 'FLSA 29 U.S.C. § 206', desc: 'Minimum wage requirements' },
+      { code: 'NLRA § 7', desc: 'Protected concerted activity rights' },
+    ],
+    evidence: [
+      'Pay stubs and W-2s for all relevant periods',
+      'Time tracking records or shift schedules',
+      'Employment contract or offer letter',
+      'Communications referencing unpaid hours',
+    ],
+    letter: 'DEMAND FOR BACK WAGES\n\nPursuant to the Fair Labor Standards Act, 29 U.S.C.\n§ 207, you are hereby notified of your failure to\ncompensate at the legally required overtime rate.\nDemand is made for all unpaid wages plus an equal\namount in liquidated damages as authorized by law.',
+  },
+  contractor: {
+    keywords: ['contractor','builder','construction','repair','plumb','electric','roof','project','job','disappear','abandoned','unfinished'],
+    severity: 79,
+    amount: '$5,000 – $15,000',
+    laws: [
+      { code: 'UCC § 2-601', desc: 'Right to reject non-conforming work product' },
+      { code: 'State Contractor License Law', desc: 'Licensed contractor performance obligations' },
+      { code: 'Consumer Protection Act § 5', desc: 'Unfair and deceptive trade practices' },
+    ],
+    evidence: [
+      'Signed contract and scope of work document',
+      'All payment records and receipts',
+      'Photos documenting incomplete or defective work',
+      'Communications showing abandonment or refusal',
+    ],
+    letter: 'NOTICE OF BREACH & DEMAND FOR REFUND\n\nYour failure to complete the contracted scope of work\nconstitutes material breach under applicable contract\nlaw. Demand is made for full refund of all payments\nmade in excess of work completed, plus documented\ncosts of repair and completion by a replacement firm.',
+  },
+  retaliation: {
+    keywords: ['retaliat','report','safety','osha','hr','whistleblow','terminat','wrongful','discriminat','harass','hostile'],
+    severity: 96,
+    amount: '$15,000 – $150,000',
+    laws: [
+      { code: 'OSHA § 11(c)', desc: 'Anti-retaliation protection for safety reports' },
+      { code: 'Title VII 42 U.S.C. § 2000e', desc: 'Prohibition on employment discrimination' },
+      { code: 'Sarbanes-Oxley § 806', desc: 'Whistleblower protection for employees' },
+    ],
+    evidence: [
+      'Timeline of safety report and termination dates',
+      'HR communications and written warnings',
+      'Performance reviews before and after report',
+      'Witness names who observed adverse actions',
+    ],
+    letter: 'CHARGE OF RETALIATION\n\nThis constitutes formal notice that the adverse\nemployment action taken constitutes unlawful\nretaliation under OSHA § 11(c) and applicable\nfederal statute. A charge has been filed with the\nappropriate federal agency. Reinstatement and\nback pay are demanded as immediate relief.',
+  },
+  default: {
+    severity: 82,
+    amount: '$3,000 – $25,000',
+    laws: [
+      { code: 'State Consumer Protection Act', desc: 'Unfair or deceptive trade practices prohibition' },
+      { code: 'Common Law Fraud', desc: 'Intentional misrepresentation causing damages' },
+      { code: 'Breach of Contract', desc: 'Failure to perform agreed obligations' },
+    ],
+    evidence: [
+      'All written or digital communications',
+      'Contracts, agreements, or receipts',
+      'Financial records showing payments made',
+      'Any witnesses to the events described',
+    ],
+    letter: 'FORMAL DEMAND LETTER\n\nThis letter constitutes formal notice of your breach\nof legal obligations in the above-captioned matter.\nDemand is made for immediate remediation of all\ndamages caused. Failure to respond within 14 days\nwill result in formal legal proceedings without\nfurther notice to you or your representatives.',
+  }
+};
+
+function detectCase(text) {
+  const t = text.toLowerCase();
+  if (CASES.landlord.keywords.some(k => t.includes(k))) return CASES.landlord;
+  if (CASES.retaliation.keywords.some(k => t.includes(k))) return CASES.retaliation;
+  if (CASES.wage.keywords.some(k => t.includes(k))) return CASES.wage;
+  if (CASES.contractor.keywords.some(k => t.includes(k))) return CASES.contractor;
+  return CASES.default;
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function typeLines(container, lines, labelText) {
+  const block = document.createElement('div');
+  block.className = 'res-block';
+
+  const label = document.createElement('div');
+  label.className = 'res-label';
+  label.textContent = labelText;
+  block.appendChild(label);
+  container.appendChild(block);
+
+  for (let i = 0; i < lines.length; i++) {
+    await delay(i === 0 ? 60 : 120);
+    const line = document.createElement('div');
+    line.className = 'res-line';
+    line.style.animationDelay = (i * 0.05) + 's';
+    line.innerHTML = lines[i];
+    block.appendChild(line);
+    container.scrollTop = container.scrollHeight;
+  }
+}
+
+async function runDemo() {
+  const input = document.getElementById('demoInput').value.trim();
+  if (!input) return;
+
+  const btn = document.getElementById('demoRun');
+  const empty = document.getElementById('demoEmpty');
+  const scanning = document.getElementById('demoScanning');
+  const results = document.getElementById('demoResults');
+
+  btn.disabled = true;
+  btn.classList.add('scanning');
+  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 2l9 5-9 5V2z" fill="white"/></svg> Analyzing...';
+
+  // Hide empty, show scanning
+  empty.classList.add('hidden');
+  scanning.classList.add('active');
+  results.classList.remove('active');
+  results.innerHTML = '';
+
+  const steps = ['ss1','ss2','ss3','ss4','ss5'];
+  const stepDurations = [400, 500, 600, 500, 700];
+  let elapsed = 0;
+
+  for (let i = 0; i < steps.length; i++) {
+    await delay(stepDurations[i]);
+    elapsed += stepDurations[i];
+    const el = document.getElementById(steps[i]);
+    el.classList.add('active');
+    if (i > 0) {
+      document.getElementById(steps[i-1]).classList.remove('active');
+      document.getElementById(steps[i-1]).classList.add('done');
+      document.getElementById(steps[i-1]).querySelector('.ss-icon').textContent = '✓';
+    }
+    if (i === steps.length - 1) {
+      await delay(300);
+      el.classList.remove('active');
+      el.classList.add('done');
+      el.querySelector('.ss-icon').textContent = '✓';
+    }
+  }
+
+  await delay(200);
+
+  // Detect case type
+  const c = detectCase(input);
+  const caseId = 'EL-' + Math.floor(Math.random()*9000+1000);
+
+  // Switch to results
+  scanning.classList.remove('active');
+  steps.forEach(s => {
+    const el = document.getElementById(s);
+    el.classList.remove('active','done');
+    el.querySelector('.ss-icon').textContent = '›';
+  });
+  results.classList.add('active');
+
+  // SEVERITY block
+  await delay(100);
+  const sevBlock = document.createElement('div');
+  sevBlock.className = 'res-block';
+  sevBlock.innerHTML = `
+    <div class="res-label">Case Severity Assessment · ${caseId}</div>
+    <div class="res-line" style="animation-delay:0.05s"><span class="hl-red">■■■■■■■■■░</span> <span class="hl-red">${c.severity}% ACTIONABLE</span></div>
+    <div class="res-line" style="animation-delay:0.1s"><span class="hl-dim">Est. recoverable damages: </span><span class="hl">${c.amount}</span></div>
+    <div class="severity-row" style="margin-top:10px">
+      <div class="sev-bar"><div class="sev-fill" id="sevFill"></div></div>
+      <div class="sev-label">${c.severity}/100</div>
+    </div>
+  `;
+  results.appendChild(sevBlock);
+  setTimeout(() => {
+    const fill = document.getElementById('sevFill');
+    if (fill) fill.style.width = c.severity + '%';
+  }, 100);
+
+  await delay(300);
+
+  // LAWS block
+  await typeLines(results, c.laws.map(l =>
+    `<span class="hl">${l.code}</span> <span class="hl-dim">— ${l.desc}</span>`
+  ), `Statutes Violated · ${c.laws.length} Found`);
+
+  await delay(200);
+
+  // EVIDENCE block
+  await typeLines(results, c.evidence.map(e => `<span class="hl-dim">› </span>${e}`), 'Evidence Required · Priority Order');
+
+  await delay(200);
+
+  // LETTER PREVIEW
+  const letterLines = c.letter.split('\n').map(l => l || '&nbsp;');
+  await typeLines(results, letterLines.map(l =>
+    `<span class="hl-dim">${l}</span>`
+  ), 'Demand Letter · Draft Preview');
+
+  await delay(150);
+
+  // NEXT STEPS
+  await typeLines(results, [
+    '<span class="hl">→</span> <span class="hl-dim">Full package ready to download</span>',
+    '<span class="hl">→</span> <span class="hl-dim">Filing deadline: 14 days recommended</span>',
+    '<span class="hl">→</span> <span class="hl-dim">Jurisdiction: Auto-detected from case</span>',
+  ], 'Next Steps');
+
+  // Reset button
+  btn.disabled = false;
+  btn.classList.remove('scanning');
+  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 2l9 5-9 5V2z" fill="white"/></svg> Analyze Again';
+}
+
+// Button
+document.getElementById('demoRun').addEventListener('click', runDemo);
+
+// Enter key in textarea
+document.getElementById('demoInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) runDemo();
+});
+
+// Example chips
+document.querySelectorAll('.demo-ex').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.getElementById('demoInput').value = chip.dataset.val;
+    runDemo();
+  });
+});
+</script>
+</body>
+</html>

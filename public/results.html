@@ -1,0 +1,2155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="icon" type="image/png" href="favicon.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EvidenceLocker — Case Analysis Complete</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{--bg:#07070A;--bg2:#0D0D12;--cream:#F0EBE0;--red:#C41E1E;--text:#E8E4DC;--muted:#968E86;--border:#1A1A22;--border2:#242430;--dim:#3A3A48;--green:#2D7A3A;--warn:#F0A500;--danger:#E5484D}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg);font-family:'Inter',sans-serif;color:var(--text);cursor:none;overflow-x:hidden}
+body{opacity:0;transition:opacity .5s ease;min-height:100vh}
+body.loaded{opacity:1}
+::selection{background:var(--red);color:#fff}
+#cursor{position:fixed;width:8px;height:8px;background:var(--red);border-radius:50%;pointer-events:none;z-index:99999;transform:translate(-50%,-50%);transition:width .22s ease,height .22s ease,background .22s ease,border .22s ease}
+#cursor.big{width:34px;height:34px;background:transparent;border:1.5px solid var(--red)}
+#top-bar{position:fixed;top:0;left:0;right:0;height:64px;z-index:1000;background:rgba(7,7,10,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 32px}
+.tb-left{display:flex;align-items:center;gap:20px}
+.tb-logo{display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:.06em}
+.tb-sep{width:1px;height:20px;background:var(--border2)}
+.tb-new{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:.1em;text-decoration:none;transition:color .15s;cursor:none;display:flex;align-items:center;gap:6px}
+.tb-new:hover{color:var(--text)}
+.tb-center{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:.1em;text-align:center;line-height:1.6}
+.tb-center span{color:var(--muted);display:block}
+.tb-right{display:flex;align-items:center;gap:10px}
+.btn-ghost-sm{background:transparent;color:var(--muted);font-family:'Inter',sans-serif;font-size:11px;font-weight:600;padding:8px 16px;border-radius:2px;border:1px solid var(--border2);cursor:none;letter-spacing:.06em;text-transform:uppercase;transition:border-color .2s,color .2s}
+.btn-ghost-sm:hover{border-color:var(--muted);color:var(--text)}
+.btn-red-sm{background:var(--red);color:#fff;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;padding:8px 16px;border-radius:2px;border:none;cursor:none;letter-spacing:.06em;text-transform:uppercase;transition:opacity .2s}
+.btn-red-sm:hover{opacity:.86}
+.btn-red-sm:disabled{opacity:.35;pointer-events:none}
+.btn-red-sm.pulse{animation:pulseBtn 1.2s ease 2}
+@keyframes pulseBtn{0%,100%{box-shadow:0 0 0 0 rgba(196,30,30,0)}50%{box-shadow:0 0 0 6px rgba(196,30,30,.2)}}
+#page-progress{position:fixed;top:64px;left:0;right:0;height:2px;z-index:999;background:var(--border)}
+#page-progress-fill{height:100%;width:0%;background:var(--red);transition:width .5s ease}
+#page-progress.done{opacity:0;transition:opacity .6s ease .4s}
+#urgency-banner{position:fixed;top:66px;left:0;right:0;z-index:998;background:rgba(196,30,30,.12);border-bottom:1px solid rgba(196,30,30,.3);padding:10px 32px;display:flex;align-items:center;gap:12px;transform:translateY(-100%);transition:transform .4s ease}
+#urgency-banner.show{transform:translateY(0)}
+.urg-dot{width:7px;height:7px;border-radius:50%;background:var(--red);animation:urgPulse 1s ease-in-out infinite}
+@keyframes urgPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
+.urg-text{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);letter-spacing:.08em;flex:1}
+.urg-text strong{color:var(--red)}
+.urg-close{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);cursor:none;letter-spacing:.1em;background:none;border:none;transition:color .15s}
+.urg-close:hover{color:var(--text)}
+#body-wrap{max-width:1280px;margin:0 auto;padding:120px 80px 100px}
+@media(max-width:1024px){#body-wrap{padding:100px 32px 80px}}
+@media(max-width:768px){#body-wrap{padding:90px 20px 60px}}
+#no-case{display:none;min-height:100vh;align-items:center;justify-content:center;flex-direction:column;gap:20px;text-align:center}
+#no-case.show{display:flex}
+.nc-title{font-family:'DM Serif Display',serif;font-size:36px;color:var(--text)}
+.nc-link{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--dim);text-decoration:none;letter-spacing:.12em;border:1px solid var(--border2);padding:10px 24px;border-radius:2px;transition:border-color .2s,color .2s;cursor:none}
+.nc-link:hover{border-color:var(--red);color:var(--text)}
+#case-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;gap:40px}
+.ch-title{font-family:'DM Serif Display',serif;font-size:clamp(32px,3.5vw,48px);font-weight:400;color:var(--text);line-height:1.1;margin-bottom:10px}
+.ch-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:.1em;line-height:1.8}
+.ch-right{display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0}
+.severity-ring-wrap{position:relative;width:80px;height:80px}
+#severity-svg{transform:rotate(-90deg)}
+#severity-ring-bg{fill:none;stroke:var(--border2);stroke-width:5}
+#severity-ring{fill:none;stroke:var(--red);stroke-width:5;stroke-linecap:round;stroke-dasharray:226;stroke-dashoffset:226;transition:stroke .4s ease}
+.severity-num-wrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+#severity-score-num{font-family:'DM Serif Display',serif;font-size:24px;color:var(--text)}
+.severity-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:.16em;text-transform:uppercase;text-align:center}
+@media(max-width:768px){#case-header{flex-direction:column}.ch-right{flex-direction:row;gap:16px}}
+#stat-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px}
+.chip{background:var(--bg2);border:1px solid var(--border);border-radius:1px;padding:8px 16px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:.1em;opacity:0;transform:translateY(6px);transition:opacity .3s ease,transform .3s ease}
+.chip.in{opacity:1;transform:none}
+.chip strong{color:var(--text)}
+#actions-panel{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:2px;padding:24px 28px;margin-bottom:28px;opacity:0;transition:opacity .5s ease;display:none}
+#actions-panel.vis{opacity:1;display:block}
+.ap-header{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.ap-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--red);letter-spacing:.16em;text-transform:uppercase;font-weight:500}
+.ap-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:768px){.ap-grid{grid-template-columns:1fr}}
+.ap-item{display:flex;align-items:flex-start;gap:10px}
+.ap-num{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--red);letter-spacing:.1em;flex-shrink:0;padding-top:2px}
+.ap-text{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);line-height:1.65}
+.ap-text strong{color:var(--text)}
+#exhibit-panel{background:linear-gradient(180deg,rgba(196,30,30,.06),transparent 120px),var(--bg2);border:1px solid var(--border);border-top:2px solid var(--red);border-radius:2px;padding:24px 28px;margin-bottom:28px;position:relative;overflow:hidden}
+.exhibit-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:16px}
+.exhibit-title-wrap{max-width:680px}
+.exhibit-kicker{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--red);letter-spacing:.16em;text-transform:uppercase;margin-bottom:8px}
+.exhibit-title{font-family:'DM Serif Display',serif;font-size:28px;color:var(--text);margin-bottom:8px}
+.exhibit-sub{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);line-height:1.75}
+.exhibit-toolbar{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}
+.exhibit-privacy{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:.06em;line-height:1.7;margin-bottom:16px}
+.exhibit-dropzone{border:1px dashed var(--border2);background:rgba(17,17,24,.82);padding:26px;border-radius:2px;display:flex;align-items:center;justify-content:space-between;gap:20px;transition:border-color .2s ease,background .2s ease,transform .2s ease}
+.exhibit-dropzone.dragging{border-color:var(--red);background:rgba(196,30,30,.08);transform:translateY(-2px)}
+.exhibit-drop-copy{display:flex;align-items:flex-start;gap:14px}
+.exhibit-drop-icon{width:44px;height:44px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#101018}
+.exhibit-drop-title{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.exhibit-drop-sub{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);line-height:1.75}
+.exhibit-drop-meta{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:.08em;text-align:right}
+#exhibit-file-input{display:none}
+.exhibit-list{display:flex;flex-direction:column;gap:12px;margin-top:16px}
+.exhibit-empty{margin-top:16px;padding:20px;border:1px solid var(--border);background:#101018;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);line-height:1.75}
+.exhibit-item{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:16px;padding:16px;border:1px solid var(--border);background:rgba(7,7,10,.45);border-radius:2px;align-items:start}
+.exhibit-thumb,.exhibit-pdf{width:96px;height:96px;border:1px solid var(--border2);background:#0A0A10;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.exhibit-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.exhibit-pdf{flex-direction:column;gap:8px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+.exhibit-main{min-width:0}
+.exhibit-topline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.exhibit-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--red);letter-spacing:.16em;text-transform:uppercase}
+.exhibit-badge{display:inline-flex;align-items:center;padding:3px 8px;border:1px solid var(--border2);background:#111118;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
+.exhibit-status{display:inline-flex;align-items:center;padding:3px 8px;border:1px solid var(--border2);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase}
+.exhibit-status.stored{color:var(--muted)}
+.exhibit-status.analyzing{color:var(--warn);border-color:rgba(240,165,0,.35);background:rgba(240,165,0,.08)}
+.exhibit-status.analyzed{color:var(--green);border-color:rgba(45,122,58,.35);background:rgba(45,122,58,.08)}
+.exhibit-status.failed{color:var(--danger);border-color:rgba(229,72,77,.35);background:rgba(229,72,77,.08)}
+.exhibit-title-input{width:100%;background:#0A0A0F;border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:10px 12px;border-radius:2px;outline:none;transition:border-color .2s ease}
+.exhibit-title-input:focus{border-color:var(--red)}
+.exhibit-fileline{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);line-height:1.8;letter-spacing:.04em;margin-top:8px}
+.exhibit-notes{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.exhibit-note{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);line-height:1.7}
+.exhibit-note strong{color:var(--text)}
+.exhibit-actions{display:flex;flex-direction:column;gap:8px;align-items:stretch}
+.ex-mini-btn{background:transparent;border:1px solid var(--border2);color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:9px;padding:7px 10px;border-radius:2px;cursor:none;letter-spacing:.1em;text-transform:uppercase;transition:border-color .2s,color .2s}
+.ex-mini-btn:hover{border-color:var(--red);color:var(--text)}
+.ex-mini-btn:disabled{opacity:.35;pointer-events:none}
+.exhibit-summary{margin-top:18px;padding-top:18px;border-top:1px solid var(--border)}
+.exhibit-summary-title{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
+.exhibit-summary-body{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);line-height:1.75;white-space:pre-wrap}
+.exhibit-error{margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--danger);line-height:1.6}
+.packet-shell{margin-top:18px;border:1px solid var(--border);background:#101018}
+.packet-tabs{display:flex;flex-wrap:wrap;border-bottom:1px solid var(--border)}
+.packet-tab{background:transparent;border:none;border-right:1px solid var(--border);padding:12px 16px;color:var(--dim);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;cursor:none;transition:color .2s ease,background .2s ease}
+.packet-tab.active{background:rgba(196,30,30,.08);color:var(--text)}
+.packet-tab:last-child{border-right:none}
+.packet-body{padding:18px 20px;min-height:170px}
+.packet-copy{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);line-height:1.85;white-space:pre-wrap}
+.packet-empty{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);line-height:1.75}
+.exhibit-footnote{margin-top:14px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:.05em;line-height:1.7}
+.exhibit-progress{margin-top:14px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.08em}
+.exhibit-split{display:flex;align-items:center;justify-content:space-between;gap:20px}
+.exhibit-storage-warn{margin-top:12px;padding:10px 12px;border:1px solid rgba(240,165,0,.35);background:rgba(240,165,0,.08);font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--warn);letter-spacing:.04em;line-height:1.7}
+.card-grid-top{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+.card-grid-bot{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:40px}
+@media(max-width:1024px){.card-grid-top,.card-grid-bot{grid-template-columns:1fr}}
+@media(max-width:900px){.exhibit-head,.exhibit-split{flex-direction:column;align-items:flex-start}.exhibit-dropzone{flex-direction:column;align-items:flex-start}.exhibit-drop-meta{text-align:left}.exhibit-item{grid-template-columns:1fr}.exhibit-thumb,.exhibit-pdf{width:100%;height:160px}.exhibit-actions{flex-direction:row;flex-wrap:wrap}}
+.card{background:var(--bg2);border:1px solid var(--border);border-top:2px solid var(--red);border-radius:2px;padding:28px 32px;min-height:420px;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-shrink:0}
+.card-head-left{display:flex;align-items:center;gap:10px}
+.card-icon{flex-shrink:0;stroke:var(--dim);fill:none}
+.card-title{font-size:15px;font-weight:600;color:var(--text)}
+.card-badge{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--red);border:1px solid rgba(196,30,30,.4);background:rgba(196,30,30,.06);padding:2px 8px;border-radius:1px;letter-spacing:.1em;margin-left:6px;opacity:0;transition:opacity .3s}
+.card-badge.vis{opacity:1}
+.card-status{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.status-text{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em}
+.status-text.loading{color:var(--red)}
+.status-text.done{color:var(--green)}
+.spin-ring{width:12px;height:12px;border-radius:50%;border:1.5px solid var(--border2);border-top-color:var(--red);animation:spin .8s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.copy-btn{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--dim);background:transparent;border:1px solid var(--border2);padding:3px 8px;border-radius:1px;cursor:none;letter-spacing:.1em;transition:border-color .2s,color .2s;display:none}
+.copy-btn:hover{border-color:var(--muted);color:var(--text)}
+.copy-btn.vis{display:block}
+.copy-btn.flash{color:var(--green);border-color:var(--green)}
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+.skeleton-bar{background:linear-gradient(90deg,#1A1A22 25%,#242430 50%,#1A1A22 75%);background-size:400px 100%;animation:shimmer 1.8s infinite;height:10px;border-radius:1px;margin-bottom:12px}
+.skeleton-wrap{flex:1}
+.card-content{font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.85;color:var(--text);white-space:pre-wrap;overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+@media(max-width:768px){.card-content{font-size:12px}}
+.stream-cursor{color:var(--red);animation:blink .7s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.stat-code{color:var(--red)}
+.money-hl{color:var(--green)}
+.ev-progress-wrap{margin-bottom:14px;flex-shrink:0}
+.ev-progress-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:.1em;margin-bottom:6px}
+.ev-progress-track{height:2px;background:var(--border);border-radius:1px;overflow:hidden}
+.ev-progress-fill{height:100%;background:var(--green);width:0%;transition:width .4s ease;border-radius:1px}
+.ev-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(26,26,34,.6);cursor:none;transition:opacity .2s}
+.ev-item.checked{opacity:.45}
+.ev-item.checked .ev-text{text-decoration:line-through;color:var(--dim)}
+.ev-checkbox{width:16px;height:16px;border:1px solid var(--dim);border-radius:1px;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;transition:border-color .2s,background .2s}
+.ev-item.checked .ev-checkbox{border-color:var(--green);background:var(--green)}
+.ev-text{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;color:var(--text);flex:1;white-space:pre-wrap}
+.critical-item{background:rgba(196,30,30,.04);border-left:3px solid var(--red)!important;padding-left:10px!important;border-radius:1px}
+.critical-badge{display:inline-block;background:var(--red);color:#fff;font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.12em;padding:1px 6px;border-radius:1px;margin-right:6px;vertical-align:middle}
+.letter-inner{background:rgba(240,235,224,.03);padding:16px;border-radius:1px;flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+.letter-content{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.9;color:var(--text);white-space:pre-wrap}
+.draft-stamp{position:absolute;top:20px;right:20px;border:2px solid rgba(196,30,30,.5);padding:4px 12px;transform:rotate(-9deg);font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--red);letter-spacing:.16em;opacity:.6;pointer-events:none;border-radius:1px}
+.letter-actions{display:none;gap:8px;margin-top:12px;flex-shrink:0}
+.letter-actions.vis{display:flex}
+.step-line{display:flex;align-items:flex-start;gap:12px;margin:8px 0}
+.step-pill{width:22px;height:22px;border-radius:50%;background:var(--red);color:#fff;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step-text{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;color:var(--text);flex:1}
+.strategy-big-num{font-family:'DM Serif Display',serif;font-size:52px;font-weight:400;color:var(--text);line-height:1;margin-bottom:4px}
+.strategy-big-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.12em;margin-bottom:12px}
+.strategy-bar-track{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:20px}
+.strategy-bar-fill{height:100%;background:var(--red);width:0%;transition:width 1s ease;border-radius:2px}
+.strategy-rest{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.85;color:var(--text);white-space:pre-wrap;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+#timeline-section{margin-top:20px;margin-bottom:40px}
+.section-title{font-family:'DM Serif Display',serif;font-size:32px;font-weight:400;color:var(--text);margin-bottom:28px}
+#timeline-track{overflow-x:auto;padding-bottom:20px;scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+.timeline-inner{display:flex;align-items:flex-start;gap:0;min-width:max-content;padding:20px 0}
+.tl-node-wrap{display:flex;flex-direction:column;align-items:center;width:160px;flex-shrink:0}
+.tl-dot{width:12px;height:12px;border-radius:50%;background:var(--red);border:2px solid var(--red);flex-shrink:0}
+.tl-dot.future{background:var(--bg2);border-color:var(--dim)}
+.tl-timeframe{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--red);letter-spacing:.12em;margin-top:10px;text-transform:uppercase;text-align:center}
+.tl-title{font-size:13px;font-weight:600;color:var(--text);margin-top:5px;text-align:center;line-height:1.3}
+.tl-desc{font-size:12px;font-weight:300;color:var(--muted);margin-top:5px;text-align:center;line-height:1.5;max-width:140px}
+.tl-line-wrap{display:flex;align-items:center;padding-top:5px;flex:1;min-width:40px}
+.tl-line{height:2px;width:100%;background:var(--border2);position:relative;overflow:hidden;min-width:40px}
+.tl-line-fill{position:absolute;top:0;left:0;height:100%;background:var(--red);width:0%;transition:width .6s ease}
+.tl-line-fill.full{width:100%}
+@media(max-width:768px){#timeline-section{display:none}}
+#chat-fab{position:fixed;bottom:32px;right:32px;z-index:900;width:52px;height:52px;border-radius:50%;background:var(--red);border:none;cursor:none;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 32px rgba(196,30,30,.4);transition:transform .2s ease,box-shadow .2s ease,opacity .3s ease;opacity:0;transform:scale(.8)}
+#chat-fab.vis{opacity:1;transform:scale(1)}
+#chat-fab:hover{transform:scale(1.08);box-shadow:0 12px 40px rgba(196,30,30,.5)}
+.fab-badge{position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--green);border:2px solid var(--bg);font-family:'JetBrains Mono',monospace;font-size:8px;color:#fff;display:flex;align-items:center;justify-content:center;animation:fabPop .4s ease .5s both}
+@keyframes fabPop{from{transform:scale(0)}to{transform:scale(1)}}
+#chat-panel{position:fixed;bottom:96px;right:32px;z-index:900;width:420px;height:580px;background:var(--bg2);border:1px solid var(--border);border-top:2px solid var(--red);border-radius:4px;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.6);transform:translateY(20px) scale(.96);opacity:0;transition:transform .3s cubic-bezier(.34,1.56,.64,1),opacity .25s ease;pointer-events:none}
+#chat-panel.open{transform:translateY(0) scale(1);opacity:1;pointer-events:all}
+@media(max-width:500px){#chat-panel{width:calc(100vw - 32px);right:16px}}
+.chat-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.chat-header-left{display:flex;align-items:center;gap:10px}
+.chat-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);letter-spacing:.1em}
+.chat-subtitle{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:.1em;margin-top:2px}
+.chat-status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:statusBlink 2s step-end infinite;flex-shrink:0}
+@keyframes statusBlink{0%,100%{opacity:1}50%{opacity:.3}}
+.chat-close{background:none;border:none;color:var(--dim);cursor:none;font-size:18px;line-height:1;transition:color .15s;padding:0 4px}
+.chat-close:hover{color:var(--text)}
+.chat-messages{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+.msg{display:flex;flex-direction:column;gap:4px;max-width:88%}
+.msg.user{align-self:flex-end;align-items:flex-end}
+.msg.ai{align-self:flex-start;align-items:flex-start}
+.msg-bubble{padding:10px 14px;border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.65}
+.msg.user .msg-bubble{background:var(--red);color:#fff;border-radius:2px 2px 0 2px}
+.msg.ai .msg-bubble{background:#111118;border:1px solid var(--border);color:var(--text);border-radius:2px 2px 2px 0;white-space:pre-wrap}
+.msg-time{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:.06em}
+.chat-suggestions{padding:8px 20px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--border);flex-shrink:0}
+.chat-suggestion{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);border:1px solid var(--border2);padding:4px 10px;border-radius:1px;cursor:none;transition:border-color .15s,color .15s;letter-spacing:.04em;white-space:nowrap}
+.chat-suggestion:hover{border-color:var(--red);color:var(--text)}
+.chat-input-wrap{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0}
+#chat-input{flex:1;background:#0A0A0F;border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:10px 14px;border-radius:2px;outline:none;transition:border-color .2s;resize:none;height:40px;cursor:text}
+#chat-input:focus{border-color:var(--red)}
+#chat-input::placeholder{color:var(--dim)}
+#chat-send{background:var(--red);border:none;color:#fff;width:40px;height:40px;border-radius:2px;cursor:none;display:flex;align-items:center;justify-content:center;transition:opacity .2s;flex-shrink:0}
+#chat-send:hover{opacity:.86}
+#chat-send:disabled{opacity:.35}
+.typing-indicator{display:flex;align-items:center;gap:4px;padding:10px 14px;background:#111118;border:1px solid var(--border);border-radius:2px 2px 2px 0;width:fit-content}
+.typing-dot{width:5px;height:5px;border-radius:50%;background:var(--dim);animation:typingAnim 1.4s ease-in-out infinite}
+.typing-dot:nth-child(2){animation-delay:.2s}
+.typing-dot:nth-child(3){animation-delay:.4s}
+@keyframes typingAnim{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-4px);opacity:1}}
+#confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:9997;opacity:0;transition:opacity .3s}
+#confetti-canvas.active{opacity:1}
+#completion-banner{background:linear-gradient(135deg,rgba(45,122,58,.12),rgba(45,122,58,.06));border:1px solid rgba(45,122,58,.3);border-radius:2px;padding:20px 28px;margin-bottom:28px;display:flex;align-items:center;gap:16px;opacity:0;transform:translateY(-8px);transition:opacity .5s ease,transform .5s ease}
+#completion-banner.vis{opacity:1;transform:none}
+.cb-icon{width:32px;height:32px;border-radius:50%;background:rgba(45,122,58,.2);border:1px solid rgba(45,122,58,.4);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cb-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--text);margin-bottom:3px}
+.cb-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.1em}
+#kb-overlay{position:fixed;inset:0;background:rgba(7,7,10,.92);z-index:9998;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s ease;backdrop-filter:blur(8px)}
+#kb-overlay.show{opacity:1;pointer-events:all}
+.kb-card{background:var(--bg2);border:1px solid var(--border);border-top:2px solid var(--red);padding:32px 40px;border-radius:2px;max-width:420px;width:90%}
+.kb-title{font-family:'DM Serif Display',serif;font-size:24px;color:var(--text);margin-bottom:24px}
+.kb-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.kb-row:last-child{border-bottom:none}
+.kb-key{font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(255,255,255,.06);border:1px solid var(--border2);border-radius:2px;padding:3px 8px;color:var(--text)}
+.kb-desc{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.08em}
+.kb-close{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:.14em;text-align:center;margin-top:20px;text-transform:uppercase;cursor:none}
+#toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg2);border:1px solid var(--border);border-top:2px solid var(--red);padding:12px 24px;border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);opacity:0;transition:opacity .3s ease,transform .3s ease;z-index:9000;white-space:nowrap;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.card-error{display:none;flex-direction:column;gap:16px;padding:20px 0;flex:1}
+.card-error.show{display:flex}
+.error-msg{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);padding-left:12px;border-left:3px solid var(--red)}
+.retry-btn{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text);background:transparent;border:1px solid var(--border2);padding:8px 16px;border-radius:2px;cursor:none;letter-spacing:.1em;text-transform:uppercase;transition:border-color .2s,color .2s;align-self:flex-start}
+.retry-btn:hover{border-color:var(--red);color:var(--red)}
+@media print{#top-bar,#cursor,#toast,#kb-overlay,#page-progress,#timeline-section,#chat-fab,#chat-panel,#confetti-canvas,#urgency-banner{display:none!important}body{background:white;color:black}.card{break-inside:avoid;border:1px solid #ccc;background:white;border-top:3px solid #c41e1e}.card-content,.letter-content,.step-text,.ev-text{color:black;font-size:11pt}#body-wrap{padding-top:20px}}
+</style>
+</head>
+<body>
+
+<canvas id="confetti-canvas"></canvas>
+<div id="cursor"></div>
+<div id="page-progress"><div id="page-progress-fill"></div></div>
+
+<div id="urgency-banner">
+  <div class="urg-dot"></div>
+  <div class="urg-text" id="urg-text">Critical deadline detected...</div>
+  <button class="urg-close" onclick="document.getElementById('urgency-banner').classList.remove('show')">Dismiss</button>
+</div>
+
+<div id="top-bar">
+  <div class="tb-left">
+    <div class="tb-logo">
+      <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><rect x="2" y="6" width="10" height="7" rx="1.2" stroke="#3A3A48" stroke-width="1.2"/><path d="M4.5 6V4.5a2.5 2.5 0 015 0V6" stroke="#3A3A48" stroke-width="1.2" stroke-linecap="round"/><circle cx="7" cy="9.5" r="1" fill="#3A3A48"/></svg>
+      EvidenceLocker
+    </div>
+    <div class="tb-sep"></div>
+    <a class="tb-new" href="intake.html" id="new-case-link">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M10 6H2M5 3L2 6l3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      New Case
+    </a>
+  </div>
+  <div class="tb-center">
+    <span id="tb-case-id">CASE NO. EL-0000</span>
+    <span id="tb-category">General Matter</span>
+  </div>
+  <div class="tb-right">
+    <button class="btn-ghost-sm" id="btn-copy-all">Copy All</button>
+    <button class="btn-ghost-sm" id="btn-share">Share</button>
+    <button class="btn-red-sm" id="btn-download" disabled><span id="dl-text">Generating...</span></button>
+  </div>
+</div>
+
+<div id="no-case">
+  <div class="nc-title">No case data found.</div>
+  <a class="nc-link" href="intake.html">← Start a new case</a>
+</div>
+
+<div id="body-wrap">
+  <div id="completion-banner">
+    <div class="cb-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 8l4 4 8-8" stroke="#2D7A3A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <div>
+      <div class="cb-title">Case file complete.</div>
+      <div class="cb-sub">All analyses ready · Press A or click the chat button to ask follow-up questions</div>
+    </div>
+  </div>
+
+  <div id="case-header">
+    <div class="ch-left">
+      <div class="ch-title">Case Analysis Complete.</div>
+      <div class="ch-meta" id="ch-meta">—</div>
+    </div>
+    <div class="ch-right">
+      <div class="severity-ring-wrap">
+        <svg id="severity-svg" width="80" height="80" viewBox="0 0 80 80">
+          <circle id="severity-ring-bg" cx="40" cy="40" r="33"/>
+          <circle id="severity-ring" cx="40" cy="40" r="33"/>
+        </svg>
+        <div class="severity-num-wrap"><span id="severity-score-num">0</span></div>
+      </div>
+      <div class="severity-label">Case Strength</div>
+    </div>
+  </div>
+
+  <div id="stat-chips">
+    <div class="chip"><strong id="chip-laws-val">—</strong>&nbsp;&nbsp;Laws Identified</div>
+    <div class="chip"><strong id="chip-ev-val">—</strong>&nbsp;&nbsp;Evidence Items</div>
+    <div class="chip">Est. Recovery&nbsp;&nbsp;<strong id="chip-rec-val">—</strong></div>
+    <div class="chip">Severity&nbsp;&nbsp;<strong id="chip-sev-val">—</strong></div>
+    <div class="chip">Status&nbsp;&nbsp;<strong style="color:var(--green)">Active</strong></div>
+  </div>
+
+  <div id="exhibit-panel">
+    <div class="exhibit-head">
+      <div class="exhibit-title-wrap">
+        <div class="exhibit-kicker">Exhibit Intelligence</div>
+        <div class="exhibit-title">Build a judge-facing evidence packet.</div>
+        <div class="exhibit-sub">Upload your real evidence. We will label it, analyze it, and tie it to your strongest claims.</div>
+      </div>
+      <div class="exhibit-toolbar">
+        <button class="btn-ghost-sm" id="btn-add-exhibits">Add Evidence Files</button>
+        <button class="btn-red-sm" id="btn-analyze-exhibits">Strengthen Case With Exhibits</button>
+        <button class="btn-ghost-sm" id="btn-clear-exhibits">Clear Exhibits</button>
+      </div>
+    </div>
+    <div class="exhibit-privacy">Stored locally in this browser. Sent to Gemini only when you analyze exhibits.</div>
+    <input type="file" id="exhibit-file-input" accept=".png,.jpg,.jpeg,.webp,.pdf,image/png,image/jpeg,image/webp,application/pdf" multiple>
+    <div class="exhibit-dropzone" id="exhibit-dropzone">
+      <div class="exhibit-drop-copy">
+        <div class="exhibit-drop-icon">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 14V4M10 4l-4 4M10 4l4 4" stroke="#C41E1E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 13.5v1.5A1.5 1.5 0 005.5 16.5h9A1.5 1.5 0 0016 15v-1.5" stroke="#968E86" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <div>
+          <div class="exhibit-drop-title">Drop screenshots, photos, or PDFs here</div>
+          <div class="exhibit-drop-sub">Supported: PNG, JPG, WEBP, PDF. Up to 8 files, 10 MB each. PDFs over 15 pages are accepted, but only the first 15 pages will be emphasized during analysis.</div>
+        </div>
+      </div>
+      <div class="exhibit-drop-meta">Real exhibits<br>Formal labels<br>Cited packet</div>
+    </div>
+    <div id="exhibit-storage-warning" class="exhibit-storage-warn" style="display:none"></div>
+    <div id="exhibit-progress" class="exhibit-progress" style="display:none"></div>
+    <div id="exhibit-list" class="exhibit-list"></div>
+    <div id="exhibit-empty" class="exhibit-empty">No exhibits uploaded yet. Add screenshots, photos, or PDFs to turn this from a case summary into a true evidence packet.</div>
+    <div class="packet-shell">
+      <div class="packet-tabs">
+        <button class="packet-tab active" type="button" data-tab="index" onclick="setPacketTab('index')">Index</button>
+        <button class="packet-tab" type="button" data-tab="claims" onclick="setPacketTab('claims')">Claim Links</button>
+        <button class="packet-tab" type="button" data-tab="gaps" onclick="setPacketTab('gaps')">Proof Gaps</button>
+        <button class="packet-tab" type="button" data-tab="addendum" onclick="setPacketTab('addendum')">Letter Addendum</button>
+      </div>
+      <div class="packet-body" id="packet-body">
+        <div class="packet-empty">Once exhibits are analyzed, this panel will generate an exhibit index, claim support matrix, proof gaps, and a cited demand-letter addendum.</div>
+      </div>
+    </div>
+    <div class="exhibit-footnote">This feature is designed to make your output look less like AI text generation and more like a structured case packet with cited exhibits.</div>
+  </div>
+
+  <div id="actions-panel">
+    <div class="ap-header">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="#C41E1E" stroke-width="1.2"/><path d="M7 4v4M7 9.5v.5" stroke="#C41E1E" stroke-width="1.4" stroke-linecap="round"/></svg>
+      <div class="ap-title">Immediate Actions — Next 48 Hours</div>
+    </div>
+    <div class="ap-grid" id="ap-grid"></div>
+  </div>
+
+  <div class="card-grid-top">
+    <div class="card" id="card1">
+      <div class="card-head">
+        <div class="card-head-left">
+          <svg class="card-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span class="card-title">Violations Identified</span>
+          <span class="card-badge" id="badge1"></span>
+        </div>
+        <div class="card-status">
+          <div class="spin-ring" id="spin1"></div>
+          <span class="status-text loading" id="stxt1">Analyzing...</span>
+          <button class="copy-btn" id="copy1" onclick="copyCard(1)">Copy</button>
+        </div>
+      </div>
+      <div class="skeleton-wrap" id="skel1"><div class="skeleton-bar" style="width:75%"></div><div class="skeleton-bar" style="width:55%"></div><div class="skeleton-bar" style="width:82%"></div><div class="skeleton-bar" style="width:42%"></div><div class="skeleton-bar" style="width:68%"></div></div>
+      <div class="card-content" id="c1" style="display:none"></div>
+      <div class="card-error" id="err1"><div class="error-msg">Analysis unavailable — check API key.</div><button class="retry-btn" onclick="doRetry()">Retry All</button></div>
+    </div>
+
+    <div class="card" id="card2">
+      <div class="card-head">
+        <div class="card-head-left">
+          <svg class="card-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          <span class="card-title">Evidence Required</span>
+          <span class="card-badge" id="badge2"></span>
+        </div>
+        <div class="card-status">
+          <div class="spin-ring" id="spin2"></div>
+          <span class="status-text loading" id="stxt2">Analyzing...</span>
+          <button class="copy-btn" id="copy2" onclick="copyCard(2)">Copy</button>
+        </div>
+      </div>
+      <div class="ev-progress-wrap" id="ev-prog-wrap" style="display:none">
+        <div class="ev-progress-label" id="ev-prog-label">0 of 0 items collected</div>
+        <div class="ev-progress-track"><div class="ev-progress-fill" id="ev-prog-fill"></div></div>
+      </div>
+      <div class="skeleton-wrap" id="skel2"><div class="skeleton-bar" style="width:70%"></div><div class="skeleton-bar" style="width:88%"></div><div class="skeleton-bar" style="width:50%"></div><div class="skeleton-bar" style="width:75%"></div><div class="skeleton-bar" style="width:60%"></div></div>
+      <div class="card-content" id="c2" style="display:none;overflow-y:auto"></div>
+      <div class="card-error" id="err2"><div class="error-msg">Analysis unavailable.</div><button class="retry-btn" onclick="doRetry()">Retry All</button></div>
+    </div>
+  </div>
+
+  <div class="card-grid-bot">
+    <div class="card" id="card3" style="position:relative">
+      <div class="draft-stamp">DRAFT</div>
+      <div class="card-head">
+        <div class="card-head-left">
+          <svg class="card-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>
+          <span class="card-title">Demand Letter</span>
+        </div>
+        <div class="card-status">
+          <div class="spin-ring" id="spin3"></div>
+          <span class="status-text loading" id="stxt3">Drafting...</span>
+          <button class="copy-btn" id="copy3" onclick="copyCard(3)">Copy</button>
+        </div>
+      </div>
+      <div class="skeleton-wrap" id="skel3"><div class="skeleton-bar" style="width:60%"></div><div class="skeleton-bar" style="width:80%"></div><div class="skeleton-bar" style="width:45%"></div><div class="skeleton-bar" style="width:72%"></div><div class="skeleton-bar" style="width:55%"></div></div>
+      <div class="letter-inner" id="letter-inner3" style="display:none"><div class="letter-content" id="c3"></div></div>
+      <div class="letter-actions" id="letter-actions">
+        <button class="btn-ghost-sm" id="btn-copy-letter" onclick="copyLetter()">Copy Letter</button>
+        <button class="btn-ghost-sm" onclick="downloadLetter()">Download .txt</button>
+      </div>
+      <div class="card-error" id="err3"><div class="error-msg">Draft unavailable.</div><button class="retry-btn" onclick="doRetry()">Retry All</button></div>
+    </div>
+
+    <div class="card" id="card4">
+      <div class="card-head">
+        <div class="card-head-left">
+          <svg class="card-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="1.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+          <span class="card-title">Filing Roadmap</span>
+        </div>
+        <div class="card-status">
+          <div class="spin-ring" id="spin4"></div>
+          <span class="status-text loading" id="stxt4">Mapping...</span>
+          <button class="copy-btn" id="copy4" onclick="copyCard(4)">Copy</button>
+        </div>
+      </div>
+      <div class="skeleton-wrap" id="skel4"><div class="skeleton-bar" style="width:65%"></div><div class="skeleton-bar" style="width:80%"></div><div class="skeleton-bar" style="width:50%"></div><div class="skeleton-bar" style="width:70%"></div><div class="skeleton-bar" style="width:45%"></div></div>
+      <div class="card-content" id="c4" style="display:none"></div>
+      <div class="card-error" id="err4"><div class="error-msg">Roadmap unavailable.</div><button class="retry-btn" onclick="doRetry()">Retry All</button></div>
+    </div>
+
+    <div class="card" id="card5">
+      <div class="card-head">
+        <div class="card-head-left">
+          <svg class="card-icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          <span class="card-title">Strategy &amp; Odds</span>
+        </div>
+        <div class="card-status">
+          <div class="spin-ring" id="spin5"></div>
+          <span class="status-text loading" id="stxt5">Calculating...</span>
+          <button class="copy-btn" id="copy5" onclick="copyCard(5)">Copy</button>
+        </div>
+      </div>
+      <div class="skeleton-wrap" id="skel5"><div class="skeleton-bar" style="width:40%"></div><div class="skeleton-bar" style="width:72%"></div><div class="skeleton-bar" style="width:58%"></div><div class="skeleton-bar" style="width:85%"></div><div class="skeleton-bar" style="width:50%"></div></div>
+      <div id="c5-wrap" style="display:none;flex-direction:column;flex:1">
+        <div class="strategy-big-num" id="c5-pct">—</div>
+        <div class="strategy-big-label">% chance of success</div>
+        <div class="strategy-bar-track"><div class="strategy-bar-fill" id="c5-bar"></div></div>
+        <div class="strategy-rest" id="c5"></div>
+      </div>
+      <div class="card-error" id="err5"><div class="error-msg">Strategy unavailable.</div><button class="retry-btn" onclick="doRetry()">Retry All</button></div>
+    </div>
+  </div>
+
+  <div id="timeline-section">
+    <div class="section-title">Case Timeline</div>
+    <div id="timeline-track">
+      <div class="timeline-inner" id="timeline-inner">
+        <div class="tl-node-wrap">
+          <div class="tl-dot"></div>
+          <div class="tl-timeframe">Day 1</div>
+          <div class="tl-title">Send Demand Letter</div>
+          <div class="tl-desc">Deliver your demand letter to the opposing party.</div>
+        </div>
+        <div class="tl-line-wrap"><div class="tl-line"><div class="tl-line-fill"></div></div></div>
+        <div class="tl-node-wrap" style="opacity:.3">
+          <div class="tl-dot future"></div>
+          <div class="tl-timeframe" style="color:var(--dim)">Loading...</div>
+          <div class="tl-title" style="color:var(--muted)">Awaiting analysis</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<button id="chat-fab" onclick="toggleChat()">
+  <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M19 3H3a1 1 0 00-1 1v11a1 1 0 001 1h4l3 3 3-3h6a1 1 0 001-1V4a1 1 0 00-1-1z" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 8h10M6 12h7" stroke="white" stroke-width="1.4" stroke-linecap="round"/></svg>
+  <div class="fab-badge">AI</div>
+</button>
+
+<div id="chat-panel">
+  <div class="chat-header">
+    <div class="chat-header-left">
+      <div class="chat-status-dot"></div>
+      <div>
+        <div class="chat-title">Ask Your Case</div>
+        <div class="chat-subtitle">AI legal assistant · Knows your full case</div>
+      </div>
+    </div>
+    <button class="chat-close" onclick="toggleChat()">×</button>
+  </div>
+  <div class="chat-messages" id="chat-messages">
+    <div class="msg ai">
+      <div class="msg-bubble">Your case file is loaded. I know your full situation, the violations found, your evidence, and the demand letter. Ask me anything — strategy, what to say, what not to say, next steps.</div>
+      <div class="msg-time">Now</div>
+    </div>
+  </div>
+  <div class="chat-suggestions" id="chat-suggestions">
+    <button class="chat-suggestion" onclick="sendSuggestion(this)">What do I do first?</button>
+    <button class="chat-suggestion" onclick="sendSuggestion(this)">How strong is my case?</button>
+    <button class="chat-suggestion" onclick="sendSuggestion(this)">Should I settle?</button>
+    <button class="chat-suggestion" onclick="sendSuggestion(this)">What's the weakest part?</button>
+  </div>
+  <div class="chat-input-wrap">
+    <textarea id="chat-input" placeholder="Ask anything about your case..." rows="1"></textarea>
+    <button id="chat-send" onclick="sendChat()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M14 2L2 7l5 2 2 5 5-12z" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+</div>
+
+<div id="kb-overlay">
+  <div class="kb-card">
+    <div class="kb-title">Keyboard Shortcuts</div>
+    <div class="kb-row"><span class="kb-key">D</span><span class="kb-desc">Download PDF</span></div>
+    <div class="kb-row"><span class="kb-key">C</span><span class="kb-desc">Copy all content</span></div>
+    <div class="kb-row"><span class="kb-key">S</span><span class="kb-desc">Share link</span></div>
+    <div class="kb-row"><span class="kb-key">A</span><span class="kb-desc">Open AI chat</span></div>
+    <div class="kb-row"><span class="kb-key">N</span><span class="kb-desc">New case</span></div>
+    <div class="kb-row"><span class="kb-key">?</span><span class="kb-desc">Toggle this help</span></div>
+    <div class="kb-close">Press any key to close</div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════
+   CONFIG — 1 API call on load, 1 per chat msg
+══════════════════════════════════════════ */
+const GEMINI_API_KEY = window.__EVIDENCELOCKER_CONFIG__?.GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+const ANALYSIS_CACHE_KEY = 'el_analysis_cache';
+const EXHIBIT_DB_NAME = 'EvidenceLockerDB';
+const EXHIBIT_STORE_NAME = 'exhibits';
+const EXHIBIT_MANIFEST_PREFIX = 'el_exhibit_manifest:';
+const EXHIBIT_MAX_FILES = 8;
+const EXHIBIT_MAX_SIZE = 10 * 1024 * 1024;
+const EXHIBIT_MAX_PDF_PAGES = 15;
+const SUPPORTED_EXHIBIT_TYPES = ['image/png','image/jpeg','image/webp','application/pdf'];
+
+let exhibitDbPromise = null;
+let exhibitStorageFallback = false;
+const exhibitMemoryStore = new Map();
+let exhibitManifest = null;
+let exhibitPacketTab = 'index';
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escAttr(t){return String(t||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+/* CURSOR */
+const cur=document.getElementById('cursor');
+let mx=innerWidth/2,my=innerHeight/2,cx=mx,cy=my;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
+function bindHoverTargets(root=document){
+  root.querySelectorAll('button,a,.ev-item,.chat-suggestion,.ex-mini-btn,.packet-tab,.exhibit-item').forEach(el=>{
+    if(el.dataset.hoverBound==='1')return;
+    el.dataset.hoverBound='1';
+    el.addEventListener('mouseenter',()=>cur.classList.add('big'));
+    el.addEventListener('mouseleave',()=>cur.classList.remove('big'));
+  });
+}
+bindHoverTargets();
+(function anim(){cx+=(mx-cx)*.14;cy+=(my-cy)*.14;cur.style.left=cx+'px';cur.style.top=cy+'px';requestAnimationFrame(anim)})();
+
+/* CASE DATA */
+let caseData=null;
+try{caseData=JSON.parse(localStorage.getItem('el_case')||'null');}catch(e){}
+
+if(!caseData){
+  document.getElementById('no-case').classList.add('show');
+  document.getElementById('body-wrap').style.display='none';
+  document.body.classList.add('loaded');
+}else{
+  window.addEventListener('load',()=>document.body.classList.add('loaded'));
+  init();
+}
+
+/* INIT */
+function init(){
+  const{category='General Matter',description='',date='',state:st='',amount='',evidence=[],notes='',caseId='EL-0000'}=caseData;
+
+  document.getElementById('tb-case-id').textContent='CASE NO. '+caseId;
+  document.getElementById('tb-category').textContent=category;
+  document.getElementById('ch-meta').textContent=`${category} · ${caseId} · ${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
+  document.getElementById('chip-rec-val').textContent=amount?'$'+Number(amount).toLocaleString('en-US'):'TBD';
+  document.getElementById('new-case-link').addEventListener('click',()=>{
+    localStorage.removeItem('el_case');
+    localStorage.removeItem('el_evidence_checked');
+    localStorage.removeItem(ANALYSIS_CACHE_KEY);
+    localStorage.removeItem(getExhibitManifestKey(caseId));
+    sessionStorage.removeItem(getExhibitManifestKey(caseId));
+    clearCaseExhibitBlobs(caseId);
+  });
+  document.querySelectorAll('.chip').forEach((c,i)=>setTimeout(()=>c.classList.add('in'),200+i*100));
+
+  const userMsg=`Category: ${category}\nDescription: ${description}\nDate started: ${date||'Not specified'}\nState/Jurisdiction: ${st||'Not specified'}\nFinancial damage: ${amount?'$'+amount:'Not specified'}\nEvidence available: ${evidence.join(', ')||'None specified'}\nAdditional notes: ${notes||'None'}`;
+  window._userMsg=userMsg;
+  window._caseData=caseData;
+  window._cardTexts={};
+
+  document.getElementById('btn-share').addEventListener('click',shareCase);
+  document.getElementById('btn-copy-all').addEventListener('click',copyAll);
+  document.getElementById('btn-download').addEventListener('click',downloadPDF);
+  initExhibitPanel();
+
+  const cachedAnalysis = getCachedAnalysis(caseId);
+  if(cachedAnalysis){
+    window._rawText = cachedAnalysis.rawText || '';
+    renderAnalysis(cachedAnalysis.sections || {}, true);
+  }else{
+    runAnalysis(userMsg);
+  }
+}
+
+/* ══════════════════════════════════════════
+   SINGLE COMBINED API CALL
+   All 5 sections + actions + timeline in one prompt
+   = 1 API call on page load, zero rate limit issues
+══════════════════════════════════════════ */
+var COMBINED_SYSTEM = `You are a litigation attorney. Analyze this case and respond with EXACTLY these sections using these headers on their own lines.
+Use plain text only.
+Do NOT use markdown, decorative separators, box drawing characters, or extra headers.
+Keep the full response concise enough to avoid truncation.
+
+[VIOLATIONS]
+List 3 strongest laws or claims only. Number them 1-3. For each give: statute or claim, short explanation, why it applies, likely remedy.
+
+[EVIDENCE]
+List 6 numbered items only. For each give: what it is, how to get it, why it matters. Mark the 2 most important items with [CRITICAL].
+
+[LETTER]
+Write one concise demand letter under 350 words. Include date, salutation, summary facts, legal basis, amount if provided, 14-day deadline, and sign "Legal Counsel, EvidenceLocker".
+
+[ROADMAP]
+List 5 numbered next steps only. For each give: agency or court, timing, cost if any, and what to bring.
+
+[STRATEGY]
+Line 1: success percentage number only.
+Line 2: settlement range.
+Line 3: best immediate strategy.
+Line 4: main leverage point.
+Line 5: most likely defense.
+
+[ACTIONS]
+3 items formatted exactly as:
+TITLE|||DETAIL
+TITLE|||DETAIL
+TITLE|||DETAIL
+
+[TIMELINE]
+JSON array only with 4 items max: [{"title":"...","timeframe":"...","description":"..."}]`;
+
+async function fillMissingSections(baseSections, userMsg){
+  const required=['VIOLATIONS','EVIDENCE','LETTER','ROADMAP','STRATEGY','ACTIONS','TIMELINE'];
+  const missing=required.filter(k=>!(baseSections[k]||'').trim());
+  if(!missing.length) return baseSections;
+
+  const prompt=`Some required sections were missing or truncated.
+Return ONLY these sections and use these exact headers on their own lines:
+${missing.map(k=>`[${k}]`).join('\n')}
+
+Rules:
+- Plain text only
+- No decorative separators
+- Be concise
+- Do not repeat sections that were not requested`;
+
+  const text=await callGemini(prompt,userMsg,4096);
+  if(!text) return baseSections;
+  const recovered=splitSections(text);
+  return {...baseSections,...recovered};
+}
+
+function getCachedAnalysis(caseId){
+  try{
+    const cached=JSON.parse(localStorage.getItem(ANALYSIS_CACHE_KEY)||'null');
+    if(cached?.caseId===caseId && cached?.sections) return cached;
+  }catch(e){}
+  return null;
+}
+
+function splitNamedSections(text,keys){
+  const normalizedKeys=keys.map(k=>k.toUpperCase());
+  const escaped=normalizedKeys.map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|');
+  const cleaned=(text||'').replace(/\r/g,'');
+  const normalized=cleaned.replace(/^.*$/gm,line=>{
+    const t=line.trim();
+    if(!t) return line;
+    if(/[a-z]/.test(t)) return line;
+    const upper=t.toUpperCase();
+    if(upper.length>90) return line;
+    for(const key of normalizedKeys){
+      if(upper.includes(key)) return `[${key}]`;
+    }
+    return line;
+  });
+  const re=new RegExp(`^\\s*(?:#{1,6}\\s*|[-*+]\\s*|>\\s*)?\\[?(${escaped})\\]?\\s*(?::|—|-)?\\s*$`,'gmi');
+  const matches=[...normalized.matchAll(re)];
+  const out={};
+  for(let i=0;i<matches.length;i++){
+    const key=matches[i][1].toUpperCase();
+    const start=matches[i].index+matches[i][0].length;
+    const end=i+1<matches.length?matches[i+1].index:normalized.length;
+    out[key]=normalized.slice(start,end).trim();
+  }
+  return out;
+}
+
+function sectionList(text){
+  return (text||'').split('\n').map(l=>l.replace(/^\s*(?:[-*•]|\d+\.)\s*/,'').trim()).filter(Boolean);
+}
+
+function getExhibitManifestKey(caseId){
+  return `${EXHIBIT_MANIFEST_PREFIX}${caseId}`;
+}
+
+function createEmptyExhibitManifest(caseId){
+  return {caseId,order:[],exhibits:{},packet:null};
+}
+
+function getExhibitManifestStorage(){
+  return exhibitStorageFallback?sessionStorage:localStorage;
+}
+
+function normalizeExhibitManifest(manifest,caseId){
+  if(!manifest||typeof manifest!=='object') return createEmptyExhibitManifest(caseId);
+  const next=createEmptyExhibitManifest(caseId);
+  next.order=Array.isArray(manifest.order)?manifest.order.filter(Boolean):[];
+  next.exhibits=manifest.exhibits&&typeof manifest.exhibits==='object'?manifest.exhibits:{};
+  next.packet=manifest.packet&&typeof manifest.packet==='object'?manifest.packet:null;
+  next.order=next.order.filter(id=>next.exhibits[id]);
+  return next;
+}
+
+function loadExhibitManifest(caseId){
+  try{
+    const raw=getExhibitManifestStorage().getItem(getExhibitManifestKey(caseId));
+    if(!raw) return createEmptyExhibitManifest(caseId);
+    return normalizeExhibitManifest(JSON.parse(raw),caseId);
+  }catch(e){
+    return createEmptyExhibitManifest(caseId);
+  }
+}
+
+function saveExhibitManifest(caseId,manifest){
+  exhibitManifest=normalizeExhibitManifest(manifest,caseId);
+  try{getExhibitManifestStorage().setItem(getExhibitManifestKey(caseId),JSON.stringify(exhibitManifest));}catch(e){}
+}
+
+function invalidateExhibitPacket(manifest){
+  manifest.packet=null;
+}
+
+function relabelExhibits(manifest){
+  manifest.order.forEach((id,idx)=>{
+    if(manifest.exhibits[id]){
+      manifest.exhibits[id].label=`Exhibit ${String.fromCharCode(65+idx)}`;
+      manifest.exhibits[id].updatedAt=new Date().toISOString();
+    }
+  });
+}
+
+function createExhibitId(){
+  return 'ex_'+Math.random().toString(36).slice(2,10);
+}
+
+function deriveExhibitTitle(fileName){
+  return (fileName||'Untitled Exhibit').replace(/\.[^.]+$/,'').slice(0,80);
+}
+
+async function sha256Blob(blob){
+  const buf=await blob.arrayBuffer();
+  const hash=await crypto.subtle.digest('SHA-256',buf);
+  return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function estimatePdfPageCount(blob){
+  try{
+    const text=new TextDecoder('latin1').decode(await blob.arrayBuffer());
+    const matches=text.match(/\/Type\s*\/Page\b/g);
+    return matches?matches.length:null;
+  }catch(e){
+    return null;
+  }
+}
+
+function arrayBufferToBase64(buffer){
+  let binary='';
+  const bytes=new Uint8Array(buffer);
+  const chunk=0x8000;
+  for(let i=0;i<bytes.length;i+=chunk){
+    binary+=String.fromCharCode(...bytes.subarray(i,i+chunk));
+  }
+  return btoa(binary);
+}
+
+function setExhibitProgress(text=''){
+  const el=document.getElementById('exhibit-progress');
+  if(!el)return;
+  if(text){
+    el.style.display='block';
+    el.textContent=text;
+  }else{
+    el.style.display='none';
+    el.textContent='';
+  }
+}
+
+function openExhibitDb(){
+  if(exhibitDbPromise) return exhibitDbPromise;
+  if(typeof indexedDB==='undefined'){
+    exhibitStorageFallback=true;
+    exhibitDbPromise=Promise.resolve(null);
+    return exhibitDbPromise;
+  }
+  exhibitDbPromise=new Promise(resolve=>{
+    try{
+      const req=indexedDB.open(EXHIBIT_DB_NAME,1);
+      req.onupgradeneeded=()=>{
+        const db=req.result;
+        if(!db.objectStoreNames.contains(EXHIBIT_STORE_NAME)){
+          db.createObjectStore(EXHIBIT_STORE_NAME,{keyPath:'id'});
+        }
+      };
+      req.onsuccess=()=>resolve(req.result);
+      req.onerror=()=>{
+        exhibitStorageFallback=true;
+        resolve(null);
+      };
+    }catch(e){
+      exhibitStorageFallback=true;
+      resolve(null);
+    }
+  });
+  return exhibitDbPromise;
+}
+
+async function saveExhibitBlob(record){
+  const db=await openExhibitDb();
+  if(!db){
+    exhibitMemoryStore.set(record.id,record.blob);
+    return;
+  }
+  await new Promise((resolve,reject)=>{
+    const tx=db.transaction(EXHIBIT_STORE_NAME,'readwrite');
+    tx.objectStore(EXHIBIT_STORE_NAME).put(record);
+    tx.oncomplete=()=>resolve();
+    tx.onerror=()=>reject(tx.error);
+  }).catch(()=>{
+    exhibitStorageFallback=true;
+    exhibitMemoryStore.set(record.id,record.blob);
+  });
+}
+
+async function loadExhibitBlob(caseId,exhibitId){
+  const id=`${caseId}:${exhibitId}`;
+  if(exhibitMemoryStore.has(id)) return exhibitMemoryStore.get(id);
+  const db=await openExhibitDb();
+  if(!db) return null;
+  return new Promise(resolve=>{
+    const tx=db.transaction(EXHIBIT_STORE_NAME,'readonly');
+    const req=tx.objectStore(EXHIBIT_STORE_NAME).get(id);
+    req.onsuccess=()=>resolve(req.result?.blob||null);
+    req.onerror=()=>resolve(null);
+  });
+}
+
+async function deleteExhibitBlob(caseId,exhibitId){
+  const id=`${caseId}:${exhibitId}`;
+  exhibitMemoryStore.delete(id);
+  const db=await openExhibitDb();
+  if(!db) return;
+  await new Promise(resolve=>{
+    const tx=db.transaction(EXHIBIT_STORE_NAME,'readwrite');
+    tx.objectStore(EXHIBIT_STORE_NAME).delete(id);
+    tx.oncomplete=()=>resolve();
+    tx.onerror=()=>resolve();
+  });
+}
+
+async function clearCaseExhibitBlobs(caseId){
+  for(const key of [...exhibitMemoryStore.keys()]){
+    if(key.startsWith(caseId+':')) exhibitMemoryStore.delete(key);
+  }
+  const db=await openExhibitDb();
+  if(!db) return;
+  await new Promise(resolve=>{
+    const tx=db.transaction(EXHIBIT_STORE_NAME,'readwrite');
+    const store=tx.objectStore(EXHIBIT_STORE_NAME);
+    const req=store.openCursor();
+    req.onsuccess=event=>{
+      const cursor=event.target.result;
+      if(!cursor){resolve();return;}
+      if(String(cursor.key).startsWith(caseId+':')) cursor.delete();
+      cursor.continue();
+    };
+    req.onerror=()=>resolve();
+  });
+}
+
+async function renderExhibitPanel(){
+  if(!caseData) return;
+  if(!exhibitManifest) exhibitManifest=loadExhibitManifest(caseData.caseId);
+  const listEl=document.getElementById('exhibit-list');
+  const emptyEl=document.getElementById('exhibit-empty');
+  const warningEl=document.getElementById('exhibit-storage-warning');
+  const analyzeBtn=document.getElementById('btn-analyze-exhibits');
+  const clearBtn=document.getElementById('btn-clear-exhibits');
+  if(!listEl||!emptyEl||!warningEl||!analyzeBtn||!clearBtn) return;
+
+  warningEl.style.display=exhibitStorageFallback?'block':'none';
+  warningEl.textContent='Persistent browser storage unavailable. Exhibits will clear when this tab closes.';
+
+  analyzeBtn.disabled=!exhibitManifest.order.length||!window._sections||exhibitManifest.order.some(id=>exhibitManifest.exhibits[id]?.status==='analyzing');
+  clearBtn.disabled=!exhibitManifest.order.length;
+  emptyEl.style.display=exhibitManifest.order.length?'none':'block';
+
+  if(window._exhibitPreviewUrls){
+    window._exhibitPreviewUrls.forEach(url=>URL.revokeObjectURL(url));
+  }
+  window._exhibitPreviewUrls=[];
+
+  const parts=await Promise.all(exhibitManifest.order.map(async id=>{
+    const meta=exhibitManifest.exhibits[id];
+    if(!meta) return '';
+    let preview='';
+    if(meta.previewKind==='image'){
+      const blob=await loadExhibitBlob(caseData.caseId,id);
+      if(blob){
+        const url=URL.createObjectURL(blob);
+        window._exhibitPreviewUrls.push(url);
+        preview=`<div class="exhibit-thumb"><img src="${url}" alt="${escAttr(meta.label)}"></div>`;
+      }else{
+        preview=`<div class="exhibit-pdf">Missing<br>Blob</div>`;
+      }
+    }else{
+      preview=`<div class="exhibit-pdf"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="#968E86" stroke-width="1.4"/><path d="M14 2v6h6" stroke="#968E86" stroke-width="1.4"/><path d="M8 13h8M8 17h5" stroke="#C41E1E" stroke-width="1.4" stroke-linecap="round"/></svg><div>${meta.pageCount?meta.pageCount+' pages':'PDF file'}</div></div>`;
+    }
+    const notes=[];
+    if(meta.summary) notes.push(`<div class="exhibit-note"><strong>Summary:</strong> ${esc(meta.summary)}</div>`);
+    if(meta.what_it_proves) notes.push(`<div class="exhibit-note"><strong>Proves:</strong> ${esc(meta.what_it_proves)}</div>`);
+    if(meta.linked_claims?.length) notes.push(`<div class="exhibit-note"><strong>Linked claims:</strong> ${esc(meta.linked_claims.join('; '))}</div>`);
+    if(meta.missing_followup?.length) notes.push(`<div class="exhibit-note"><strong>Still missing:</strong> ${esc(meta.missing_followup.join('; '))}</div>`);
+    if(meta.analysisError) notes.push(`<div class="exhibit-error">${esc(meta.analysisError)}</div>`);
+    const pdfNote=meta.pageCount&&meta.pageCount>EXHIBIT_MAX_PDF_PAGES?` · first ${EXHIBIT_MAX_PDF_PAGES} pages emphasized`:'';
+    return `<div class="exhibit-item">
+      ${preview}
+      <div class="exhibit-main">
+        <div class="exhibit-topline">
+          <span class="exhibit-label">${esc(meta.label||'Exhibit')}</span>
+          <span class="exhibit-badge">${esc(meta.previewKind)}</span>
+          <span class="exhibit-status ${escAttr(meta.status||'stored')}">${esc(meta.status||'stored')}</span>
+        </div>
+        <input class="exhibit-title-input" value="${escAttr(meta.title||'')}" onchange="updateExhibitTitle('${id}', this.value)" maxlength="80">
+        <div class="exhibit-fileline">${esc(meta.fileName||'')} · ${Math.round((meta.size||0)/1024)} KB${pdfNote}</div>
+        ${notes.length?`<div class="exhibit-notes">${notes.join('')}</div>`:''}
+      </div>
+      <div class="exhibit-actions">
+        <button class="ex-mini-btn" type="button" onclick="moveExhibit('${id}',-1)" ${exhibitManifest.order[0]===id?'disabled':''}>Move Up</button>
+        <button class="ex-mini-btn" type="button" onclick="moveExhibit('${id}',1)" ${exhibitManifest.order[exhibitManifest.order.length-1]===id?'disabled':''}>Move Down</button>
+        <button class="ex-mini-btn" type="button" onclick="retryExhibitAnalysis('${id}')" ${meta.status==='analyzing'?'disabled':''}>Retry</button>
+        <button class="ex-mini-btn" type="button" onclick="removeExhibit('${id}')">Remove</button>
+      </div>
+    </div>`;
+  }));
+  listEl.innerHTML=parts.join('');
+  bindHoverTargets(document.getElementById('exhibit-panel'));
+  renderPacketBody();
+}
+
+function renderPacketBody(){
+  const body=document.getElementById('packet-body');
+  if(!body) return;
+  document.querySelectorAll('.packet-tab').forEach(btn=>btn.classList.toggle('active',btn.dataset.tab===exhibitPacketTab));
+  const packet=exhibitManifest?.packet;
+  if(!packet){
+    body.innerHTML='<div class="packet-empty">Once exhibits are analyzed, this panel will generate an exhibit index, claim support matrix, proof gaps, and a cited demand-letter addendum.</div>';
+    return;
+  }
+  const keyMap={index:'exhibit_index',claims:'claim_matrix',gaps:'proof_gaps',addendum:'letter_addendum'};
+  const text=packet[keyMap[exhibitPacketTab]]||'';
+  body.innerHTML=text?`<div class="packet-copy">${esc(text)}</div>`:'<div class="packet-empty">This packet section is empty. Retry the exhibit packet generation.</div>';
+}
+
+function setPacketTab(tab){
+  exhibitPacketTab=tab;
+  renderPacketBody();
+}
+
+async function initExhibitPanel(){
+  if(!caseData) return;
+  await openExhibitDb();
+  exhibitManifest=loadExhibitManifest(caseData.caseId);
+  const input=document.getElementById('exhibit-file-input');
+  const addBtn=document.getElementById('btn-add-exhibits');
+  const analyzeBtn=document.getElementById('btn-analyze-exhibits');
+  const clearBtn=document.getElementById('btn-clear-exhibits');
+  const dropzone=document.getElementById('exhibit-dropzone');
+  if(addBtn&&!addBtn.dataset.bound){
+    addBtn.dataset.bound='1';
+    addBtn.addEventListener('click',()=>input.click());
+  }
+  if(input&&!input.dataset.bound){
+    input.dataset.bound='1';
+    input.addEventListener('change',async e=>{
+      await handleExhibitFiles(e.target.files);
+      e.target.value='';
+    });
+  }
+  if(analyzeBtn&&!analyzeBtn.dataset.bound){
+    analyzeBtn.dataset.bound='1';
+    analyzeBtn.addEventListener('click',analyzeExhibits);
+  }
+  if(clearBtn&&!clearBtn.dataset.bound){
+    clearBtn.dataset.bound='1';
+    clearBtn.addEventListener('click',clearExhibits);
+  }
+  if(dropzone&&!dropzone.dataset.bound){
+    dropzone.dataset.bound='1';
+    ['dragenter','dragover'].forEach(evt=>dropzone.addEventListener(evt,e=>{
+      e.preventDefault();
+      dropzone.classList.add('dragging');
+    }));
+    ['dragleave','dragend','drop'].forEach(evt=>dropzone.addEventListener(evt,e=>{
+      e.preventDefault();
+      dropzone.classList.remove('dragging');
+    }));
+    dropzone.addEventListener('drop',async e=>{
+      const files=e.dataTransfer?.files;
+      if(files?.length) await handleExhibitFiles(files);
+    });
+  }
+  await renderExhibitPanel();
+}
+
+async function handleExhibitFiles(fileList){
+  if(!fileList?.length) return;
+  if(!exhibitManifest) exhibitManifest=loadExhibitManifest(caseData.caseId);
+  let added=0;
+  for(const file of Array.from(fileList)){
+    if(exhibitManifest.order.length>=EXHIBIT_MAX_FILES){
+      showToast(`Max ${EXHIBIT_MAX_FILES} exhibits per case.`);
+      break;
+    }
+    if(!SUPPORTED_EXHIBIT_TYPES.includes(file.type)){
+      showToast('Unsupported file type. Use PNG, JPG, WEBP, or PDF.');
+      continue;
+    }
+    if(file.size>EXHIBIT_MAX_SIZE){
+      showToast('File exceeds 10 MB limit.');
+      continue;
+    }
+    const fingerprint=await sha256Blob(file);
+    const dupId=exhibitManifest.order.find(id=>exhibitManifest.exhibits[id]?.fingerprint===fingerprint);
+    if(dupId){
+      showToast(`Already added as ${exhibitManifest.exhibits[dupId].label}.`);
+      continue;
+    }
+    const exhibitId=createExhibitId();
+    const pageCount=file.type==='application/pdf'?await estimatePdfPageCount(file):null;
+    const now=new Date().toISOString();
+    exhibitManifest.exhibits[exhibitId]={
+      exhibitId,
+      label:'',
+      title:deriveExhibitTitle(file.name),
+      fileName:file.name,
+      mimeType:file.type,
+      size:file.size,
+      fingerprint,
+      pageCount,
+      previewKind:file.type==='application/pdf'?'pdf':'image',
+      status:'stored',
+      analysisError:null,
+      summary:'',
+      what_it_proves:'',
+      authenticity_notes:'',
+      linked_claims:[],
+      missing_followup:[],
+      createdAt:now,
+      updatedAt:now
+    };
+    exhibitManifest.order.push(exhibitId);
+    await saveExhibitBlob({
+      id:`${caseData.caseId}:${exhibitId}`,
+      caseId:caseData.caseId,
+      exhibitId,
+      blob:file,
+      fileName:file.name,
+      mimeType:file.type,
+      size:file.size,
+      lastModified:file.lastModified||Date.now(),
+      fingerprint,
+      createdAt:now,
+      updatedAt:now
+    });
+    added++;
+  }
+  if(added){
+    relabelExhibits(exhibitManifest);
+    invalidateExhibitPacket(exhibitManifest);
+    saveExhibitManifest(caseData.caseId,exhibitManifest);
+    await renderExhibitPanel();
+    showToast(`${added} exhibit${added===1?'':'s'} added.`);
+  }
+}
+
+async function updateExhibitTitle(exhibitId,value){
+  if(!exhibitManifest?.exhibits?.[exhibitId]) return;
+  exhibitManifest.exhibits[exhibitId].title=(value||'').trim()||deriveExhibitTitle(exhibitManifest.exhibits[exhibitId].fileName);
+  exhibitManifest.exhibits[exhibitId].updatedAt=new Date().toISOString();
+  invalidateExhibitPacket(exhibitManifest);
+  saveExhibitManifest(caseData.caseId,exhibitManifest);
+  await renderExhibitPanel();
+}
+
+async function moveExhibit(exhibitId,direction){
+  if(!exhibitManifest) return;
+  const idx=exhibitManifest.order.indexOf(exhibitId);
+  const nextIdx=idx+direction;
+  if(idx<0||nextIdx<0||nextIdx>=exhibitManifest.order.length) return;
+  const temp=exhibitManifest.order[idx];
+  exhibitManifest.order[idx]=exhibitManifest.order[nextIdx];
+  exhibitManifest.order[nextIdx]=temp;
+  relabelExhibits(exhibitManifest);
+  invalidateExhibitPacket(exhibitManifest);
+  saveExhibitManifest(caseData.caseId,exhibitManifest);
+  await renderExhibitPanel();
+}
+
+async function removeExhibit(exhibitId){
+  if(!exhibitManifest?.exhibits?.[exhibitId]) return;
+  await deleteExhibitBlob(caseData.caseId,exhibitId);
+  delete exhibitManifest.exhibits[exhibitId];
+  exhibitManifest.order=exhibitManifest.order.filter(id=>id!==exhibitId);
+  relabelExhibits(exhibitManifest);
+  invalidateExhibitPacket(exhibitManifest);
+  saveExhibitManifest(caseData.caseId,exhibitManifest);
+  await renderExhibitPanel();
+  showToast('Exhibit removed.');
+}
+
+async function clearExhibits(){
+  if(!caseData) return;
+  await clearCaseExhibitBlobs(caseData.caseId);
+  exhibitManifest=createEmptyExhibitManifest(caseData.caseId);
+  try{localStorage.removeItem(getExhibitManifestKey(caseData.caseId));}catch(e){}
+  try{sessionStorage.removeItem(getExhibitManifestKey(caseData.caseId));}catch(e){}
+  await renderExhibitPanel();
+  showToast('Exhibits cleared.');
+}
+
+async function analyzeExhibitById(exhibitId){
+  const meta=exhibitManifest?.exhibits?.[exhibitId];
+  if(!meta) return false;
+  const blob=await loadExhibitBlob(caseData.caseId,exhibitId);
+  if(!blob){
+    meta.status='failed';
+    meta.analysisError='Stored file unavailable. Re-upload this exhibit.';
+    saveExhibitManifest(caseData.caseId,exhibitManifest);
+    await renderExhibitPanel();
+    return false;
+  }
+  meta.status='analyzing';
+  meta.analysisError=null;
+  saveExhibitManifest(caseData.caseId,exhibitManifest);
+  await renderExhibitPanel();
+  try{
+    const analyzed=await analyzeSingleExhibit(meta,blob,window._userMsg||'');
+    Object.assign(meta,analyzed,{
+      status:'analyzed',
+      analysisError:null,
+      updatedAt:new Date().toISOString()
+    });
+    saveExhibitManifest(caseData.caseId,exhibitManifest);
+    await renderExhibitPanel();
+    return true;
+  }catch(err){
+    meta.status='failed';
+    meta.analysisError=err?.message||'Gemini could not analyze this exhibit.';
+    meta.updatedAt=new Date().toISOString();
+    saveExhibitManifest(caseData.caseId,exhibitManifest);
+    await renderExhibitPanel();
+    return false;
+  }
+}
+
+async function retryExhibitAnalysis(exhibitId){
+  if(!window._sections){
+    showToast('Wait for the main case analysis to finish first.');
+    return;
+  }
+  setExhibitProgress('Retrying exhibit analysis...');
+  await analyzeExhibitById(exhibitId);
+  const analyzed=exhibitManifest.order.some(id=>exhibitManifest.exhibits[id]?.status==='analyzed');
+  if(analyzed) await generateExhibitPacket();
+  setExhibitProgress('');
+}
+
+async function analyzeExhibits(){
+  if(!window._sections){
+    showToast('Wait for the main case analysis to finish first.');
+    return;
+  }
+  if(!exhibitManifest?.order?.length){
+    showToast('Add at least one exhibit first.');
+    return;
+  }
+  const pending=exhibitManifest.order.filter(id=>exhibitManifest.exhibits[id]&&exhibitManifest.exhibits[id].status!=='analyzed');
+  if(!pending.length&&exhibitManifest.packet){
+    showToast('Exhibit packet already ready.');
+    return;
+  }
+  let processed=0;
+  for(const id of pending){
+    processed++;
+    setExhibitProgress(`Analyzing exhibit ${processed} of ${pending.length}...`);
+    await analyzeExhibitById(id);
+  }
+  if(exhibitManifest.order.some(id=>exhibitManifest.exhibits[id]?.status==='analyzed')){
+    await generateExhibitPacket();
+  }
+  setExhibitProgress('');
+  await renderExhibitPanel();
+}
+
+function buildExhibitContextLines(){
+  if(!exhibitManifest?.order?.length) return '';
+  const lines=exhibitManifest.order.map(id=>{
+    const meta=exhibitManifest.exhibits[id];
+    if(!meta) return '';
+    return `${meta.label}: ${meta.title}. Summary: ${meta.summary||'Not analyzed yet.'} Proves: ${meta.what_it_proves||'Pending.'} Claims: ${(meta.linked_claims||[]).join('; ')||'Pending.'}`;
+  }).filter(Boolean);
+  const gaps=exhibitManifest.packet?.proof_gaps?`\nPROOF GAPS: ${exhibitManifest.packet.proof_gaps}`:'';
+  return lines.length?`\nEXHIBITS:\n${lines.join('\n')}${gaps}`:'';
+}
+
+function renderAnalysis(s, instant=false){
+  window._sections = s;
+
+  const cardMap = {VIOLATIONS:1,EVIDENCE:2,LETTER:3,ROADMAP:4,STRATEGY:5};
+  let done=0;
+  const total=5;
+
+  function onCardDone(){
+    done++;
+    const pct=50+Math.round((done/total)*50);
+    document.getElementById('page-progress-fill').style.width=pct+'%';
+    if(done>=total){
+      setTimeout(()=>document.getElementById('page-progress').classList.add('done'), instant ? 0 : 600);
+      activateDownload();
+      showCompletion();
+      launchConfetti();
+    }
+  }
+
+  Object.keys(cardMap).forEach(k=>{
+    const n=cardMap[k];
+    const v=stripMarkdown((s[k]||'').trim());
+    if(v){
+      window._cardTexts[n]=v;
+      if(instant){
+        renderCardInstant(n,v);
+        onCardDone();
+      }else{
+        streamInto(n,v,onCardDone);
+      }
+    }else{
+      showCardError(n);
+      onCardDone();
+    }
+  });
+
+  renderActions(s.ACTIONS||'');
+  renderTimeline(s.TIMELINE||'[]');
+  renderExhibitPanel();
+}
+
+async function runAnalysis(userMsg){
+  document.getElementById('page-progress-fill').style.width='10%';
+  const text = await callGemini(COMBINED_SYSTEM, userMsg, 8192);
+  if(!text){
+    [1,2,3,4,5].forEach(n=>showCardError(n));
+    return;
+  }
+  window._rawText = text;
+  let s = splitSections(text);
+
+  // If parsing fails, retry once with a stronger formatting reminder
+  if(Object.keys(s).length<2){
+    const retryText = await callGemini(COMBINED_SYSTEM + '\n\nReturn headers exactly as specified.', userMsg, 8192);
+    if(retryText){
+      window._rawText = retryText;
+      s = splitSections(retryText);
+    }
+  }
+  s = await fillMissingSections(s, userMsg);
+  window._sections = s;
+
+  // Progress to 50% after API returns
+  document.getElementById('page-progress-fill').style.width='50%';
+  try{
+    localStorage.setItem(ANALYSIS_CACHE_KEY, JSON.stringify({
+      caseId: window._caseData?.caseId || '',
+      userMsg,
+      rawText: window._rawText || text,
+      sections: s,
+      cachedAt: new Date().toISOString()
+    }));
+  }catch(e){}
+
+  renderAnalysis(s,false);
+}
+
+function doRetry(){
+  try{localStorage.removeItem(ANALYSIS_CACHE_KEY);}catch(e){}
+  // Reset all cards
+  [1,2,3,4,5].forEach(n=>{
+    document.getElementById('err'+n).classList.remove('show');
+    document.getElementById('skel'+n).style.display='block';
+    document.getElementById('spin'+n).style.display='block';
+    const stxt=document.getElementById('stxt'+n);
+    stxt.textContent=n===3?'Drafting...':n===4?'Mapping...':n===5?'Calculating...':'Analyzing...';
+    stxt.classList.add('loading');stxt.classList.remove('done');
+    document.getElementById('copy'+n).classList.remove('vis');
+    const c=document.getElementById('c'+n);
+    if(c)c.style.display='none';
+  });
+  document.getElementById('c5-wrap').style.display='none';
+  document.getElementById('letter-inner3').style.display='none';
+  document.getElementById('page-progress').classList.remove('done');
+  document.getElementById('page-progress-fill').style.width='0%';
+  window._cardTexts={};
+  runAnalysis(window._userMsg);
+}
+
+/* GEMINI CALL with retry */
+async function callGemini(sys, userMsg, maxTokens=8192){
+  if(!GEMINI_API_KEY||GEMINI_API_KEY==='YOUR_GEMINI_API_KEY'){
+    showToast('Set GEMINI_API_KEY in Vercel environment variables.');
+    return '';
+  }
+  for(let attempt=1;attempt<=3;attempt++){
+    try{
+      const res=await fetch(GEMINI_URL,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          contents:[{
+            role:'user',
+            parts:[{text: sys + '\n\n---\n\n' + userMsg}]
+          }],
+          generationConfig:{temperature:0.65, maxOutputTokens:maxTokens}
+        })
+      });
+      if(res.status===429){
+        if(attempt<3){await sleep(3000*attempt);continue;}
+        showToast('Rate limit. Try again in 30 seconds.');
+        return '';
+      }
+      if(!res.ok){
+        const errText = await res.text();
+        console.error('API error body:', errText);
+        throw new Error('HTTP '+res.status);
+      }
+      const data=await res.json();
+      const text=data?.candidates?.[0]?.content?.parts?.[0]?.text||'';
+      if(!text) throw new Error('Empty response');
+      return text;
+    }catch(err){
+      if(attempt<3){await sleep(2000*attempt);continue;}
+      console.error('Gemini error:',err);
+      showToast('API error. Check console for details.');
+      return '';
+    }
+  }
+  return '';
+}
+
+async function callGeminiWithParts(parts,maxTokens=4096,temperature=0.45){
+  if(!GEMINI_API_KEY||GEMINI_API_KEY==='YOUR_GEMINI_API_KEY'){
+    throw new Error('Set GEMINI_API_KEY in Vercel environment variables.');
+  }
+  for(let attempt=1;attempt<=3;attempt++){
+    try{
+      const res=await fetch(GEMINI_URL,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          contents:[{role:'user',parts}],
+          generationConfig:{temperature,maxOutputTokens:maxTokens}
+        })
+      });
+      if(res.status===429){
+        if(attempt<3){await sleep(2500*attempt);continue;}
+        throw new Error('Rate limit hit during exhibit analysis.');
+      }
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const data=await res.json();
+      const text=data?.candidates?.[0]?.content?.parts?.[0]?.text||'';
+      if(!text) throw new Error('Empty exhibit analysis response.');
+      return text;
+    }catch(err){
+      if(attempt<3){await sleep(1500*attempt);continue;}
+      throw err;
+    }
+  }
+  throw new Error('Exhibit analysis failed.');
+}
+
+async function analyzeSingleExhibit(exhibitMeta,blob,caseSummary){
+  const buffer=await blob.arrayBuffer();
+  const base64=arrayBufferToBase64(buffer);
+  const focusNote=exhibitMeta.pageCount&&exhibitMeta.pageCount>EXHIBIT_MAX_PDF_PAGES
+    ? `This PDF appears to have ${exhibitMeta.pageCount} pages. Focus your reasoning on the first ${EXHIBIT_MAX_PDF_PAGES} pages and note that later pages may not be part of the cited packet.`
+    : '';
+  const prompt=`You are analyzing one legal exhibit for a case packet.
+Use plain text only.
+Do not use decorative separators.
+Do not add disclaimers.
+Return EXACTLY these headers on their own lines:
+[SUMMARY]
+[PROVES]
+[AUTHENTICITY]
+[CLAIMS]
+[MISSING]
+
+Case summary:
+${caseSummary}
+
+Current strongest claims:
+${window._cardTexts?.[1]||window._sections?.VIOLATIONS||'Not available'}
+
+Exhibit label: ${exhibitMeta.label}
+Exhibit title: ${exhibitMeta.title}
+File name: ${exhibitMeta.fileName}
+Mime type: ${exhibitMeta.mimeType}
+${focusNote}
+
+[SUMMARY]
+2-4 concise sentences describing what the exhibit is.
+
+[PROVES]
+1-3 concise sentences on what fact this exhibit helps prove.
+
+[AUTHENTICITY]
+1-2 concise sentences on foundation, authorship, timestamps, metadata, or chain-of-custody considerations.
+
+[CLAIMS]
+Bullet-free list, one line per claim or theory supported.
+
+[MISSING]
+Bullet-free list, one line per follow-up proof still needed.`;
+
+  let text=await callGeminiWithParts([
+    {text:prompt},
+    {inline_data:{mime_type:exhibitMeta.mimeType,data:base64}}
+  ],4096,0.35);
+  let sections=splitNamedSections(text,['SUMMARY','PROVES','AUTHENTICITY','CLAIMS','MISSING']);
+  if(Object.keys(sections).length<3){
+    text=await callGeminiWithParts([
+      {text:prompt+'\n\nReturn the exact headers only. No extra formatting.'},
+      {inline_data:{mime_type:exhibitMeta.mimeType,data:base64}}
+    ],4096,0.25);
+    sections=splitNamedSections(text,['SUMMARY','PROVES','AUTHENTICITY','CLAIMS','MISSING']);
+  }
+  if(Object.keys(sections).length<3) throw new Error('Gemini returned incomplete exhibit sections.');
+  return {
+    summary:(sections.SUMMARY||'').trim(),
+    what_it_proves:(sections.PROVES||'').trim(),
+    authenticity_notes:(sections.AUTHENTICITY||'').trim(),
+    linked_claims:sectionList(sections.CLAIMS),
+    missing_followup:sectionList(sections.MISSING)
+  };
+}
+
+async function generateExhibitPacket(){
+  const analyzed=exhibitManifest.order.map(id=>exhibitManifest.exhibits[id]).filter(meta=>meta&&meta.status==='analyzed');
+  if(!analyzed.length){
+    showToast('Analyze at least one exhibit first.');
+    return false;
+  }
+  setExhibitProgress('Generating exhibit packet...');
+  const exhibitDigest=analyzed.map(meta=>`${meta.label} | ${meta.title}\nSummary: ${meta.summary}\nProves: ${meta.what_it_proves}\nAuthenticity: ${meta.authenticity_notes}\nClaims: ${(meta.linked_claims||[]).join('; ')||'None'}\nMissing: ${(meta.missing_followup||[]).join('; ')||'None'}`).join('\n\n');
+  const packetPrompt=`You are preparing a judge-facing exhibit packet for a legal case.
+Use plain text only.
+Do not use decorative separators.
+Do not add disclaimers.
+Return EXACTLY these headers on their own lines:
+[EXHIBIT_INDEX]
+[CLAIM_MATRIX]
+[PROOF_GAPS]
+[LETTER_ADDENDUM]
+
+Case summary:
+${window._userMsg||''}
+
+Base analysis:
+VIOLATIONS:
+${window._cardTexts?.[1]||window._sections?.VIOLATIONS||'Pending'}
+
+EVIDENCE:
+${window._cardTexts?.[2]||window._sections?.EVIDENCE||'Pending'}
+
+ROADMAP:
+${window._cardTexts?.[4]||window._sections?.ROADMAP||'Pending'}
+
+CURRENT LETTER:
+${window._cardTexts?.[3]||window._sections?.LETTER||'Pending'}
+
+Exhibits:
+${exhibitDigest}
+
+[EXHIBIT_INDEX]
+List each exhibit with one sentence on what it is and why it matters.
+
+[CLAIM_MATRIX]
+For each strongest claim, identify which exhibits support it and what factual point they prove.
+
+[PROOF_GAPS]
+List the biggest missing proof items still needed before court, hearing, or demand delivery.
+
+[LETTER_ADDENDUM]
+Write a concise addendum that can be attached to the demand letter and references the exhibits by label.`;
+
+  let text=await callGemini(packetPrompt,window._userMsg||'',4096);
+  let sections=splitNamedSections(text,['EXHIBIT_INDEX','CLAIM_MATRIX','PROOF_GAPS','LETTER_ADDENDUM']);
+  const missing=['EXHIBIT_INDEX','CLAIM_MATRIX','PROOF_GAPS','LETTER_ADDENDUM'].filter(k=>!(sections[k]||'').trim());
+  if(missing.length){
+    const retry=await callGemini(`Some exhibit packet sections were missing. Return ONLY these exact headers:\n${missing.map(k=>`[${k}]`).join('\n')}\nPlain text only. No decorative separators.`,packetPrompt,3072);
+    if(retry){
+      sections={...sections,...splitNamedSections(retry,['EXHIBIT_INDEX','CLAIM_MATRIX','PROOF_GAPS','LETTER_ADDENDUM'])};
+    }
+  }
+  if(!sections.EXHIBIT_INDEX&&!sections.CLAIM_MATRIX&&!sections.PROOF_GAPS&&!sections.LETTER_ADDENDUM){
+    setExhibitProgress('');
+    showToast('Packet generation failed.');
+    return false;
+  }
+  exhibitManifest.packet={
+    generatedAt:new Date().toISOString(),
+    exhibit_index:(sections.EXHIBIT_INDEX||'').trim(),
+    claim_matrix:(sections.CLAIM_MATRIX||'').trim(),
+    proof_gaps:(sections.PROOF_GAPS||'').trim(),
+    letter_addendum:(sections.LETTER_ADDENDUM||'').trim()
+  };
+  saveExhibitManifest(caseData.caseId,exhibitManifest);
+  await renderExhibitPanel();
+  setExhibitProgress('');
+  showToast('Exhibit packet ready.');
+  return true;
+}
+
+/* SECTION PARSER — fixed regex, no escaped brackets */
+function splitSections(text){
+  // Strip markdown emphasis around known headers and tolerate markdown header prefixes
+  const cleaned = text
+    .replace(/\r/g,'')
+    .replace(/\*\*(\s*\[?(VIOLATIONS|EVIDENCE|LETTER|ROADMAP|STRATEGY|ACTIONS|TIMELINE)\]?\s*)\*\*/gi,'$1')
+    .replace(/__(\s*\[?(VIOLATIONS|EVIDENCE|LETTER|ROADMAP|STRATEGY|ACTIONS|TIMELINE)\]?\s*)__+/gi,'$1');
+
+  // Normalize uppercase header variants like "VIOLATIONS IDENTIFIED" to "[VIOLATIONS]"
+  const normalized = cleaned.replace(/^.*$/gm,line=>{
+    const t=line.trim();
+    if(!t) return line;
+    if(/[a-z]/.test(t)) return line;
+    const upper=t.toUpperCase();
+    if(upper.length>40) return line;
+    const keys=['VIOLATIONS','EVIDENCE','LETTER','ROADMAP','STRATEGY','ACTIONS','TIMELINE'];
+    for(const k of keys){
+      if(upper.includes(k)) return `[${k}]`;
+    }
+    return line;
+  });
+
+  const re=/^\s*(?:#{1,6}\s*|[-*+]\s*|>\s*)?\[?(VIOLATIONS|EVIDENCE|LETTER|ROADMAP|STRATEGY|ACTIONS|TIMELINE)\]?\s*(?::|—|-)?\s*$/gmi;
+  const matches=[...normalized.matchAll(re)];
+  const out={};
+  for(let i=0;i<matches.length;i++){
+    const key=matches[i][1].toUpperCase();
+    const start=matches[i].index+matches[i][0].length;
+    const end=i+1<matches.length?matches[i+1].index:normalized.length;
+    out[key]=normalized.slice(start,end).trim();
+  }
+  return out;
+}
+
+function stripMarkdown(text){
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1')   // **bold** -> bold
+    .replace(/\*(.+?)\*/g, '$1')       // *italic* -> italic
+    .replace(/#{1,6}\s/g, '')          // ## headers
+    .replace(/^\s*[\*\-]\s/gm, '• ')   // * bullets -> •
+    .trim();
+}
+
+/* STREAM INTO CARD */
+function streamInto(n,fullText,onComplete){
+  document.getElementById('skel'+n).style.display='none';
+  document.getElementById('spin'+n).style.display='none';
+  const stxt=document.getElementById('stxt'+n);
+  stxt.textContent='Complete';stxt.classList.remove('loading');stxt.classList.add('done');
+  document.getElementById('copy'+n).classList.add('vis');
+
+  if(n===2){
+    document.getElementById('c2').style.display='block';
+    processEvidence(fullText);
+    onComplete&&onComplete();
+    return;
+  }
+  if(n===3){
+    document.getElementById('letter-inner3').style.display='block';
+    streamText(document.getElementById('c3'),fullText,()=>{
+      document.getElementById('letter-actions').classList.add('vis');
+      onComplete&&onComplete();
+    });
+    return;
+  }
+  if(n===5){
+    document.getElementById('c5-wrap').style.display='flex';
+    const lines=fullText.split('\n');
+    const pct=parseInt((lines[0].match(/(\d+)/)||['','70'])[1]);
+    const rest=lines.slice(1).join('\n').trim();
+    document.getElementById('c5-pct').textContent=pct;
+    setTimeout(()=>{document.getElementById('c5-bar').style.width=pct+'%';},200);
+    animateRing(pct);
+    document.getElementById('chip-sev-val').textContent=pct+'/100';
+    streamText(document.getElementById('c5'),rest,()=>onComplete&&onComplete());
+    return;
+  }
+  const el=document.getElementById('c'+n);
+  el.style.display='block';
+  streamText(el,fullText,()=>{
+    if(n===1)processViolations(fullText);
+    if(n===4)processRoadmap(fullText);
+    onComplete&&onComplete();
+  });
+}
+
+function renderCardInstant(n,fullText){
+  document.getElementById('skel'+n).style.display='none';
+  document.getElementById('spin'+n).style.display='none';
+  const stxt=document.getElementById('stxt'+n);
+  stxt.textContent='Complete';
+  stxt.classList.remove('loading');
+  stxt.classList.add('done');
+  document.getElementById('copy'+n).classList.add('vis');
+
+  if(n===2){
+    document.getElementById('c2').style.display='block';
+    processEvidence(fullText);
+    return;
+  }
+  if(n===3){
+    document.getElementById('letter-inner3').style.display='block';
+    document.getElementById('c3').innerHTML=esc(fullText).replace(/\n/g,'<br>');
+    document.getElementById('letter-actions').classList.add('vis');
+    return;
+  }
+  if(n===5){
+    document.getElementById('c5-wrap').style.display='flex';
+    const lines=fullText.split('\n');
+    const pct=parseInt((lines[0].match(/(\d+)/)||['','70'])[1]);
+    const rest=lines.slice(1).join('\n').trim();
+    document.getElementById('c5-pct').textContent=pct;
+    document.getElementById('c5-bar').style.width=pct+'%';
+    animateRing(pct);
+    document.getElementById('chip-sev-val').textContent=pct+'/100';
+    document.getElementById('c5').innerHTML=esc(rest).replace(/\n/g,'<br>');
+    return;
+  }
+
+  const el=document.getElementById('c'+n);
+  el.style.display='block';
+  el.innerHTML=esc(fullText).replace(/\n/g,'<br>');
+  if(n===1)processViolations(fullText);
+  if(n===4)processRoadmap(fullText);
+}
+
+function streamText(el,fullText,onDone){
+  const fastThreshold=1200;
+  if(fullText.length>fastThreshold){
+    el.innerHTML=esc(fullText).replace(/\n/g,'<br>');
+    el.scrollTop=el.scrollHeight;
+    if(onDone)onDone();
+    return;
+  }
+  el.innerHTML='';let i=0;
+  const iv=setInterval(()=>{
+    if(i>=fullText.length){clearInterval(iv);if(onDone)onDone();return;}
+    i=Math.min(i+24,fullText.length);
+    el.innerHTML=esc(fullText.slice(0,i)).replace(/\n/g,'<br>')+'<span class="stream-cursor">|</span>';
+    el.scrollTop=el.scrollHeight;
+  },8);
+}
+
+/* POST PROCESSING */
+function processViolations(text){
+  const el=document.getElementById('c1');
+  const count=(text.match(/^\d+\./gm)||[]).length;
+  if(count){
+    document.getElementById('badge1').textContent=count+' laws';
+    document.getElementById('badge1').classList.add('vis');
+    document.getElementById('chip-laws-val').textContent=count;
+  }
+  el.innerHTML=esc(text).replace(/\n/g,'<br>')
+    .replace(/(§\s*[\d\w.\-]+|U\.S\.C\.[^\s<]+|\d+\s*C\.F\.R\.[^\s<]+)/g,'<span class="stat-code">$1</span>')
+    .replace(/(\$[\d,]+(?:\.\d{2})?)/g,'<span class="money-hl">$1</span>');
+}
+
+function processEvidence(text){
+  const el=document.getElementById('c2');
+  const lines=text.split('\n');
+  const items=[];let cur='';
+  lines.forEach(l=>{
+    if(/^\d+\./.test(l.trim())){if(cur)items.push(cur.trim());cur=l;}
+    else{cur+='\n'+l;}
+  });
+  if(cur)items.push(cur.trim());
+  const count=items.length;
+  if(count){
+    document.getElementById('badge2').textContent=count+' items';
+    document.getElementById('badge2').classList.add('vis');
+    document.getElementById('chip-ev-val').textContent=count;
+  }
+  let checked=[];
+  try{checked=JSON.parse(localStorage.getItem('el_evidence_checked')||'[]');}catch(e){}
+  el.innerHTML='';
+  document.getElementById('ev-prog-wrap').style.display='block';
+  items.forEach((item,idx)=>{
+    const isCrit=item.includes('[CRITICAL]');
+    const div=document.createElement('div');
+    div.className='ev-item'+(isCrit?' critical-item':'')+(checked.includes(idx)?' checked':'');
+    div.innerHTML=`<div class="ev-checkbox">${checked.includes(idx)?chkSvg():''}</div><div class="ev-text">${isCrit?'<span class="critical-badge">CRITICAL</span>':''}${esc(item.replace('[CRITICAL]','').replace(/^\d+\.\s*/,''))}</div>`;
+    div.addEventListener('click',()=>toggleEvidence(div,idx,count));
+    el.appendChild(div);
+  });
+  updateEvProgress(checked.length,count);
+}
+
+function chkSvg(){return '<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2.5 2.5 4.5-4.5" stroke="white" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';}
+
+function toggleEvidence(div,idx,total){
+  const ok=div.classList.toggle('checked');
+  div.querySelector('.ev-checkbox').innerHTML=ok?chkSvg():'';
+  let checked=[];
+  try{checked=JSON.parse(localStorage.getItem('el_evidence_checked')||'[]');}catch(e){}
+  if(ok){if(!checked.includes(idx))checked.push(idx);}else{checked=checked.filter(i=>i!==idx);}
+  try{localStorage.setItem('el_evidence_checked',JSON.stringify(checked));}catch(e){}
+  updateEvProgress(checked.length,total);
+}
+
+function updateEvProgress(done,total){
+  document.getElementById('ev-prog-label').textContent=`${done} of ${total} items collected`;
+  document.getElementById('ev-prog-fill').style.width=total>0?(done/total*100)+'%':'0%';
+}
+
+function processRoadmap(text){
+  const el=document.getElementById('c4');
+  el.innerHTML='';el.style.display='block';
+  extractUrgency(text);
+  text.split('\n').forEach(line=>{
+    const m=line.match(/^(\d+)\.\s*(.*)/);
+    if(m){
+      const row=document.createElement('div');row.className='step-line';
+      row.innerHTML=`<div class="step-pill">${m[1]}</div><div class="step-text">${esc(m[2])}</div>`;
+      el.appendChild(row);
+    }else if(line.trim()){
+      const p=document.createElement('div');
+      p.style.cssText='font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--muted);line-height:1.7;margin:4px 0;padding-left:34px;white-space:pre-wrap';
+      p.textContent=line;el.appendChild(p);
+    }
+  });
+}
+
+/* RENDER ACTIONS from combined response */
+function renderActions(text){
+  if(!text.trim())return;
+  const lines=text.split('\n').filter(l=>l.includes('|||'));
+  if(!lines.length)return;
+  const grid=document.getElementById('ap-grid');
+  grid.innerHTML='';
+  lines.slice(0,3).forEach((line,i)=>{
+    const[title,detail]=line.split('|||');
+    if(!title)return;
+    const div=document.createElement('div');div.className='ap-item';
+    div.innerHTML=`<div class="ap-num">0${i+1}</div><div class="ap-text"><strong>${esc(title.trim())}</strong><br>${esc((detail||'').trim())}</div>`;
+    grid.appendChild(div);
+  });
+  if(grid.children.length>0)document.getElementById('actions-panel').classList.add('vis');
+}
+
+/* RENDER TIMELINE from combined response */
+function renderTimeline(text){
+  try{
+    let raw=text.replace(/```json|```/g,'').trim();
+    // Find JSON array in the text
+    const match=raw.match(/\[[\s\S]*\]/);
+    if(!match)return;
+    const milestones=JSON.parse(match[0]);
+    if(!milestones.length)return;
+    const inner=document.getElementById('timeline-inner');
+    inner.innerHTML='';
+    milestones.forEach((m,i)=>{
+      const nw=document.createElement('div');nw.className='tl-node-wrap';
+      nw.innerHTML=`<div class="tl-dot${i>0?' future':''}"></div><div class="tl-timeframe" style="${i>0?'color:var(--dim)':''}">${esc(m.timeframe||'')}</div><div class="tl-title">${esc(m.title||'')}</div><div class="tl-desc">${esc(m.description||'')}</div>`;
+      inner.appendChild(nw);
+      if(i<milestones.length-1){
+        const lw=document.createElement('div');lw.className='tl-line-wrap';
+        lw.innerHTML=`<div class="tl-line"><div class="tl-line-fill${i===0?' full':''}"></div></div>`;
+        inner.appendChild(lw);
+      }
+    });
+  }catch(e){console.warn('Timeline parse failed',e);}
+}
+
+/* URGENCY BANNER */
+function extractUrgency(text){
+  const patterns=[/(\d+)\s*days?/i,/statute of limitations/i,/deadline/i,/must file/i,/within\s+\d+/i];
+  for(const line of text.split('\n')){
+    if(line.length>20&&line.length<200&&patterns.some(p=>p.test(line))){
+      const clean=line.replace(/^\d+\.\s*/,'').trim();
+      document.getElementById('urg-text').innerHTML=`<strong>Critical deadline detected:</strong> ${esc(clean.slice(0,120))}${clean.length>120?'...':''}`;
+      setTimeout(()=>document.getElementById('urgency-banner').classList.add('show'),1200);
+      setTimeout(()=>document.getElementById('urgency-banner').classList.remove('show'),14000);
+      break;
+    }
+  }
+}
+
+/* SEVERITY RING */
+function animateRing(score){
+  const c=document.getElementById('severity-ring');
+  const circ=2*Math.PI*33;
+  c.style.strokeDasharray=circ;
+  c.style.stroke=score<50?'#E5484D':score<75?'#F0A500':'#2D7A3A';
+  const start=performance.now(),target=(score/100)*circ;
+  function ease(t){return 1-Math.pow(1-t,3);}
+  (function f(now){
+    const t=Math.min((now-start)/1200,1);
+    c.style.strokeDashoffset=circ-ease(t)*target;
+    document.getElementById('severity-score-num').textContent=Math.floor(ease(t)*score);
+    if(t<1)requestAnimationFrame(f);
+    else document.getElementById('severity-score-num').textContent=score;
+  })(start);
+}
+
+/* COMPLETION */
+function showCompletion(){
+  document.getElementById('completion-banner').classList.add('vis');
+  setTimeout(()=>document.getElementById('chat-fab').classList.add('vis'),800);
+}
+
+/* CONFETTI */
+function launchConfetti(){
+  const canvas=document.getElementById('confetti-canvas');
+  canvas.width=innerWidth;canvas.height=innerHeight;
+  canvas.classList.add('active');
+  const ctx=canvas.getContext('2d');
+  const colors=['#C41E1E','#E8E4DC','#2D7A3A','#F0EBE0','#F0A500'];
+  const particles=Array.from({length:80},()=>({
+    x:Math.random()*innerWidth,y:-10,
+    vx:(Math.random()-.5)*3,vy:Math.random()*3+2,
+    size:Math.random()*8+3,
+    color:colors[Math.floor(Math.random()*colors.length)],
+    rot:Math.random()*360,rotV:(Math.random()-.5)*5,
+    opacity:1
+  }));
+  let frame=0;
+  (function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;p.rot+=p.rotV;
+      if(frame>60)p.opacity=Math.max(0,p.opacity-.012);
+      ctx.save();ctx.globalAlpha=p.opacity;
+      ctx.translate(p.x,p.y);ctx.rotate(p.rot*Math.PI/180);
+      ctx.fillStyle=p.color;ctx.fillRect(-p.size/2,-p.size/4,p.size,p.size/2);
+      ctx.restore();
+    });
+    frame++;
+    if(frame<150)requestAnimationFrame(draw);
+    else{canvas.classList.remove('active');ctx.clearRect(0,0,canvas.width,canvas.height);}
+  })();
+}
+
+/* AI CHAT — uses a separate API call only when user sends a message */
+let chatOpen=false;
+const chatHistory=[];
+
+function toggleChat(){
+  chatOpen=!chatOpen;
+  document.getElementById('chat-panel').classList.toggle('open',chatOpen);
+}
+
+function sendSuggestion(btn){
+  document.getElementById('chat-input').value=btn.textContent;
+  document.getElementById('chat-suggestions').style.display='none';
+  sendChat();
+}
+
+async function sendChat(){
+  const input=document.getElementById('chat-input');
+  const text=input.value.trim();
+  if(!text)return;
+  input.value='';
+  addChatMsg('user',text);
+  chatHistory.push({role:'user',parts:[{text}]});
+  document.getElementById('chat-suggestions').style.display='none';
+  const typing=addTypingIndicator();
+  document.getElementById('chat-send').disabled=true;
+
+  const ct=window._cardTexts||{};
+  const exhibitContext=buildExhibitContextLines();
+  const sys=`You are a legal assistant for EvidenceLocker. The user's case:
+${window._userMsg||''}
+
+Analysis generated:
+VIOLATIONS: ${ct[1]||'pending'}
+EVIDENCE: ${ct[2]||'pending'}
+DEMAND LETTER: ${ct[3]||'pending'}
+FILING ROADMAP: ${ct[4]||'pending'}
+STRATEGY: ${ct[5]||'pending'}
+${exhibitContext}
+
+Answer directly and specifically using the actual case details. 3-5 sentences max. No disclaimers.`;
+
+  try{
+    const res=await fetch(GEMINI_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        contents:[
+          {role:'user', parts:[{text: sys}]},
+          ...chatHistory.slice(-6)
+        ],
+        generationConfig:{temperature:0.6, maxOutputTokens:512}
+      })});
+    const data=await res.json();
+    const reply=data?.candidates?.[0]?.content?.parts?.[0]?.text||"I couldn't respond. Try again.";
+    chatHistory.push({role:'model',parts:[{text:reply}]});
+    typing.remove();
+    addChatMsg('ai',reply);
+  }catch(e){
+    typing.remove();
+    addChatMsg('ai','Connection error. Check your API key and try again.');
+  }
+  document.getElementById('chat-send').disabled=false;
+}
+
+function addChatMsg(role,text){
+  const msgs=document.getElementById('chat-messages');
+  const div=document.createElement('div');div.className='msg '+role;
+  const now=new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  div.innerHTML=`<div class="msg-bubble">${esc(text)}</div><div class="msg-time">${now}</div>`;
+  msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;
+  return div;
+}
+
+function addTypingIndicator(){
+  const msgs=document.getElementById('chat-messages');
+  const div=document.createElement('div');div.className='msg ai';
+  div.innerHTML='<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
+  msgs.appendChild(div);msgs.scrollTop=msgs.scrollHeight;
+  return div;
+}
+
+document.getElementById('chat-input').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}
+});
+
+/* ERROR */
+function showCardError(n){
+  document.getElementById('skel'+n).style.display='none';
+  document.getElementById('spin'+n).style.display='none';
+  document.getElementById('stxt'+n).textContent='Error';
+  document.getElementById('err'+n).classList.add('show');
+}
+
+/* COPY / SHARE */
+function copyCard(n){
+  navigator.clipboard.writeText(window._cardTexts?.[n]||'').then(()=>{
+    const btn=document.getElementById('copy'+n);btn.textContent='Copied!';btn.classList.add('flash');
+    setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('flash');},1500);
+  });
+}
+function copyLetter(){
+  const fullLetter=[window._cardTexts?.[3]||'',exhibitManifest?.packet?.letter_addendum||''].filter(Boolean).join('\n\n');
+  navigator.clipboard.writeText(fullLetter).then(()=>{
+    const btn=document.getElementById('btn-copy-letter');btn.textContent='Copied!';
+    setTimeout(()=>{btn.textContent='Copy Letter';},1500);
+  });
+}
+function downloadLetter(){
+  const fullLetter=[window._cardTexts?.[3]||'',exhibitManifest?.packet?.letter_addendum||''].filter(Boolean).join('\n\n');
+  const blob=new Blob([fullLetter],{type:'text/plain'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='demand-letter.txt';a.click();
+}
+function copyAll(){
+  const secs=[['VIOLATIONS IDENTIFIED',1],['EVIDENCE CHECKLIST',2],['DEMAND LETTER',3],['FILING ROADMAP',4],['CASE STRATEGY',5]];
+  const all=secs.map(([t,n])=>`═══ ${t} ═══\n\n${window._cardTexts?.[n]||'(not loaded)'}`).join('\n\n\n');
+  navigator.clipboard.writeText(all).then(()=>showToast('All content copied to clipboard'));
+}
+function shareCase(){
+  const enc=btoa(JSON.stringify({cat:caseData?.category,id:caseData?.caseId,ts:Date.now()}));
+  const url=location.href.split('?')[0]+'?case='+enc;
+  navigator.clipboard.writeText(url).then(()=>showToast('Link copied to clipboard'));
+}
+
+/* TOAST */
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+/* PDF */
+function appendExhibitPacketToPdf(doc,ctx){
+  const packet=exhibitManifest?.packet;
+  if(!packet)return;
+  const sections=[
+    ['EXHIBIT INDEX',packet.exhibit_index],
+    ['CLAIM SUPPORT MATRIX',packet.claim_matrix],
+    ['PROOF GAPS',packet.proof_gaps],
+    ['CITED LETTER ADDENDUM',packet.letter_addendum]
+  ].filter(([,text])=>text&&text.trim());
+  sections.forEach(([title,raw])=>{
+    doc.addPage();
+    ctx.paintPage();
+    doc.setFillColor(20,20,26);doc.rect(0,0,ctx.pW,22,'F');
+    doc.setDrawColor(196,30,30);doc.setLineWidth(0.6);doc.line(0,22,ctx.pW,22);
+    doc.setFont('Courier','bold');doc.setFontSize(9);doc.setTextColor(196,30,30);doc.text(title,ctx.mg,14);
+    doc.setFont('Courier','normal');doc.setFontSize(7);doc.setTextColor(58,58,72);doc.text(ctx.caseId,ctx.pW-ctx.mg,14,{align:'right'});
+    doc.setFont('Courier','normal');doc.setFontSize(8.5);doc.setTextColor(232,228,220);
+    let y=32;
+    doc.splitTextToSize(raw,ctx.cW).forEach(l=>{
+      if(y>ctx.pH-20){ctx.footer();doc.addPage();ctx.paintPage();y=20;}
+      doc.text(l,ctx.mg,y);y+=4.5;
+    });
+    ctx.footer();
+  });
+}
+function activateDownload(){
+  const btn=document.getElementById('btn-download');
+  document.getElementById('dl-text').textContent='Download PDF';
+  btn.disabled=false;btn.classList.add('pulse');
+}
+function downloadPDF(){
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
+  const{caseId='EL-0000',category='General Matter'}=caseData||{};
+  const pW=210,pH=297,mg=20,cW=pW-mg*2;
+  const dateStr=new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  let pn=1;
+  function paintPage(){doc.setFillColor(7,7,10);doc.rect(0,0,pW,pH,'F');}
+  function footer(){doc.setFont('Courier','normal');doc.setFontSize(7);doc.setTextColor(90,90,100);doc.text(`Generated by EvidenceLocker · Case No. ${caseId} · Page ${pn}`,pW/2,pH-10,{align:'center'});pn++;}
+  doc.setFillColor(7,7,10);doc.rect(0,0,pW,pH,'F');
+  doc.setDrawColor(196,30,30);doc.setLineWidth(0.8);doc.line(mg,60,pW-mg,60);
+  doc.setFont('Helvetica','bold');doc.setFontSize(28);doc.setTextColor(232,228,220);doc.text('EVIDENCELOCKER',mg,40);
+  doc.setFontSize(11);doc.setFont('Courier','normal');doc.setTextColor(90,90,100);
+  doc.text(`CASE NO. ${caseId}`,mg,75);doc.text(`CATEGORY: ${category}`,mg,83);doc.text(`GENERATED: ${dateStr}`,mg,91);
+  footer();
+  [['VIOLATIONS IDENTIFIED',1],['EVIDENCE REQUIRED',2],['DEMAND LETTER',3],['FILING ROADMAP',4],['CASE STRATEGY',5]].forEach(([title,n])=>{
+    doc.addPage();doc.setFillColor(7,7,10);doc.rect(0,0,pW,pH,'F');
+    doc.setFillColor(20,20,26);doc.rect(0,0,pW,22,'F');
+    doc.setDrawColor(196,30,30);doc.setLineWidth(0.6);doc.line(0,22,pW,22);
+    doc.setFont('Courier','bold');doc.setFontSize(9);doc.setTextColor(196,30,30);doc.text(title,mg,14);
+    doc.setFont('Courier','normal');doc.setFontSize(7);doc.setTextColor(58,58,72);doc.text(caseId,pW-mg,14,{align:'right'});
+    const raw=window._cardTexts?.[n]||'(Not available)';
+    doc.setFont('Courier','normal');doc.setFontSize(8.5);doc.setTextColor(232,228,220);
+    let y=32;
+    doc.splitTextToSize(raw,cW).forEach(l=>{
+      if(y>pH-20){footer();doc.addPage();doc.setFillColor(7,7,10);doc.rect(0,0,pW,pH,'F');y=20;}
+      doc.text(l,mg,y);y+=4.5;
+    });
+    footer();
+  });
+  appendExhibitPacketToPdf(doc,{pW,pH,mg,cW,caseId,paintPage,footer});
+  doc.save(`evidencelocker-${caseId}.pdf`);
+}
+
+/* KEYBOARD SHORTCUTS */
+let kbOpen=false;
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+  const k=e.key.toLowerCase();
+  if(k==='?'){kbOpen=!kbOpen;document.getElementById('kb-overlay').classList.toggle('show',kbOpen);return;}
+  if(kbOpen){kbOpen=false;document.getElementById('kb-overlay').classList.remove('show');return;}
+  if(k==='d')downloadPDF();
+  if(k==='c')copyAll();
+  if(k==='s')shareCase();
+  if(k==='a')toggleChat();
+  if(k==='n'){
+    localStorage.removeItem('el_case');
+    if(caseData?.caseId){
+      localStorage.removeItem(getExhibitManifestKey(caseData.caseId));
+      sessionStorage.removeItem(getExhibitManifestKey(caseData.caseId));
+      clearCaseExhibitBlobs(caseData.caseId);
+    }
+    window.location.href='intake.html';
+  }
+});
+document.getElementById('kb-overlay').addEventListener('click',()=>{kbOpen=false;document.getElementById('kb-overlay').classList.remove('show');});
+</script>
+</body>
+</html>
