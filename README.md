@@ -17,7 +17,7 @@
   <img src="https://img.shields.io/badge/LIVE_DEMO-evidencelocker.vercel.app-C41E1E?style=for-the-badge&labelColor=07070A" />
 </a>
 &nbsp;
-<a href="#">
+<a href="https://www.youtube.com/watch?v=Dr4yYFryo4g">
   <img src="https://img.shields.io/badge/DEMO_VIDEO-3_min_walkthrough-FFFFFF?style=for-the-badge&labelColor=07070A" />
 </a>
 &nbsp;
