@@ -21,7 +21,7 @@
   <img src="https://img.shields.io/badge/DEMO_VIDEO-3_min_walkthrough-FFFFFF?style=for-the-badge&labelColor=07070A" />
 </a>
 &nbsp;
-<a href="#">
+<a href="https://quantumsprint.devpost.com/">
   <img src="https://img.shields.io/badge/QUANTUM_SPRINT-Best_AI_Innovation_Track-C41E1E?style=for-the-badge&labelColor=07070A" />
 </a>
 
