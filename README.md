@@ -22,7 +22,7 @@
 </a>
 &nbsp;
 <a href="https://quantumsprint.devpost.com/">
-  <img src="https://img.shields.io/badge/QUANTUM_SPRINT-Best_AI_Innovation_Track-C41E1E?style=for-the-badge&labelColor=07070A" />
+  <img src="https://img.shields.io/badge/QUANTUM_SPRINT-2026_Submission-C41E1E?style=for-the-badge&labelColor=07070A" />
 </a>
 
 <br/><br/>
